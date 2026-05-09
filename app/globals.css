@@ -15,10 +15,12 @@
 html, body {
   background: var(--background);
   color: var(--foreground);
-  /* iOS Safari の dynamic toolbar / PWA standalone でも正しく viewport を埋めるため
-     dvh (visible viewport height) を採用。フォールバックとして 100% も指定 */
+  /* iOS Safari PWA standalone は初期ロード時 100dvh が誤評価される既知バグが
+     ある。ViewportHeightFix.tsx が `--app-h` に正しい値を書き込むので、
+     それを優先する。フォールバックは dvh / 100%。 */
   height: 100%;
   height: 100dvh;
+  height: var(--app-h, 100dvh);
   overscroll-behavior: none;
 }
 

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
+import ViewportHeightFix from "@/components/ViewportHeightFix";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -71,7 +72,10 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
       </head>
-      <body className="h-full overflow-hidden">{children}</body>
+      <body className="h-full overflow-hidden">
+        <ViewportHeightFix />
+        {children}
+      </body>
     </html>
   );
 }
