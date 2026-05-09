@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Search, Tv, Satellite, Radio } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { groupChannels } from "@/lib/m3u";
@@ -33,6 +33,31 @@ export default function Sidebar() {
   }, [channels, search]);
 
   const grouped = useMemo(() => groupChannels(filtered), [filtered]);
+
+  // 初回ロード時に選択中のチャンネルを自動でスクロール表示する。
+  // ユーザーがクリックして切り替えたときの邪魔にならないよう、初回のみ実行。
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const didInitialScrollRef = useRef(false);
+
+  useEffect(() => {
+    if (didInitialScrollRef.current) return;
+    if (collapsed) return;
+    if (channels.length === 0 || !selectedId) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // DOM 反映を 1 frame 待ってから scroll
+    const id = requestAnimationFrame(() => {
+      const el = container.querySelector<HTMLElement>(
+        `[data-channel-id="${CSS.escape(selectedId)}"]`
+      );
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "auto" });
+      }
+      didInitialScrollRef.current = true;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [channels.length, selectedId, collapsed]);
 
   if (collapsed) {
     return (
@@ -72,7 +97,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
         {channels.length === 0 ? (
           <div className="p-6 text-center text-sm text-slate-500">
             m3u を登録するとチャンネルが表示されます。
@@ -124,6 +149,7 @@ function GroupSection({
           return (
             <button
               key={c.id}
+              data-channel-id={c.id}
               onClick={() => onSelect(c.id)}
               className={`w-full flex items-center pl-9 pr-3.5 py-2 text-sm text-left transition-colors border-l-[3px] ${
                 active
