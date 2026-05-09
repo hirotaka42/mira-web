@@ -8,20 +8,37 @@ import { buildFetchInit, mixedContentWarning, validateUrl } from "@/lib/safeFetc
 /**
  * EPGStation の HLS ライブストリームを再生するプレイヤー。
  *
- * 流れ:
- *   ① GET /api/streams/live/{ch}/hls?mode=N → JSON {streamId: N}
- *   ② /streamfiles/stream{N}.m3u8 を 200 になるまで polling (最大 ~30 秒)
- *   ③ Safari は <video src=...m3u8> でネイティブ再生、それ以外は hls.js
- *   ④ unmount 時に DELETE /api/streams/{streamId} で停止 → tuner 解放
+ * EPGStation 公式 WebUI (LiveHLSVideo.vue / LiveHLSVideoState.ts) と同じ
+ * プロトコルに揃えてある:
+ *
+ *   1. POST/GET /api/streams/live/{ch}/hls?mode=N → JSON {streamId}
+ *   2. /api/streams?isHalfWidth=true を 1秒間隔で polling し、
+ *      自分の streamId の isEnable === true を待つ
+ *   3. <video> に m3u8 URL を渡す (Safari ネイティブ HLS / hls.js は new Hls() のみ)
+ *   4. ストリーム維持: 10秒ごとに PUT /api/streams/{streamId}/keep
+ *      (これを送らないとサーバ側で自動停止される)
+ *   5. unmount 時: keepalive 停止 → DELETE /api/streams/{streamId}
  *
  * iOS Safari でも動くため WebGPU/WebCodecs/SharedArrayBuffer は不要。
  */
 
 const POLL_INTERVAL_MS = 1000;
-const POLL_TIMEOUT_MS = 45_000;
+const POLL_TIMEOUT_MS = 60_000;
+const KEEP_INTERVAL_MS = 10_000;
 
 interface StartStreamInfo {
   streamId: number;
+}
+
+interface StreamInfoItem {
+  streamId: number;
+  isEnable: boolean;
+  type: string;
+  channelId?: number;
+}
+
+interface StreamInfo {
+  items: StreamInfoItem[];
 }
 
 function canPlayNativeHls(): boolean {
@@ -65,13 +82,14 @@ export default function HlsPlayer({ channel, onStats }: Props) {
     let hls: Hls | null = null;
     let streamId: number | null = null;
     let baseOrigin: string | null = null;
+    let keepTimer: ReturnType<typeof setInterval> | null = null;
 
     setError(null);
     setLoading(true);
     setWaitingMessage("ストリーム起動中…");
 
     (async () => {
-      // ① 起動 RPC
+      // 入力 URL 検証
       let parsed;
       try {
         parsed = validateUrl(channel.url);
@@ -92,6 +110,7 @@ export default function HlsPlayer({ channel, onStats }: Props) {
       }
       baseOrigin = parsed.url.origin;
 
+      // ① ストリーム起動 RPC
       let info: StartStreamInfo;
       try {
         const res = await fetch(parsed.url.toString(), buildFetchInit(parsed.url, ac.signal));
@@ -112,60 +131,84 @@ export default function HlsPlayer({ channel, onStats }: Props) {
       if (cancelled) return;
       streamId = info.streamId;
 
-      // ② m3u8 file が出るまで polling
-      const m3u8Url = `${baseOrigin}/streamfiles/stream${streamId}.m3u8`;
-      const m3u8Parsed = new URL(m3u8Url);
-      const startedAt = Date.now();
-      setWaitingMessage("トランスコード待機中… (約 15-20 秒)");
+      // ② keepalive を即時開始 (これが無いとサーバ側でストリームが自動停止される)
+      const startKeep = (sid: number) => {
+        if (keepTimer) clearInterval(keepTimer);
+        keepTimer = setInterval(() => {
+          if (cancelled) return;
+          fetch(`${baseOrigin}/api/streams/${sid}/keep`, {
+            method: "PUT",
+            mode: "cors",
+            credentials: "omit",
+          }).catch(() => {
+            /* best-effort, transient errors are tolerated */
+          });
+        }, KEEP_INTERVAL_MS);
+      };
+      startKeep(streamId);
 
-      while (!cancelled) {
+      // ③ /api/streams で自分の streamId が isEnable=true になるまで polling
+      //    (m3u8 ファイル HEAD ではなく、サーバ側の "ready" 状態を見る)
+      setWaitingMessage("トランスコード待機中…");
+      const startedAt = Date.now();
+      const isHalfWidthSuffix = "?isHalfWidth=true";
+      const streamsUrl = `${baseOrigin}/api/streams${isHalfWidthSuffix}`;
+      let ready = false;
+      while (!cancelled && Date.now() - startedAt < POLL_TIMEOUT_MS) {
         try {
-          const headInit = buildFetchInit(m3u8Parsed, ac.signal, { method: "HEAD" });
-          const res = await fetch(m3u8Url, headInit);
-          if (res.ok) break;
+          const res = await fetch(streamsUrl, {
+            method: "GET",
+            mode: "cors",
+            credentials: "omit",
+            cache: "no-store",
+            signal: ac.signal,
+          });
+          if (res.ok) {
+            const data: StreamInfo = await res.json();
+            const me = data.items.find((it) => it.streamId === streamId);
+            if (me && me.isEnable === true) {
+              ready = true;
+              break;
+            }
+          }
         } catch (e) {
           if (cancelled) return;
           if (e instanceof Error && e.name === "AbortError") return;
-          // poll 中は落とさず継続
-        }
-        if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
-          if (!cancelled) {
-            setError("HLS ストリームの起動がタイムアウトしました");
-            setLoading(false);
-          }
-          return;
+          // transient errors during warmup; keep polling
         }
         await sleep(POLL_INTERVAL_MS);
       }
       if (cancelled) return;
+      if (!ready) {
+        setError("HLS ストリームの起動がタイムアウトしました (60秒以上 isEnable に到達せず)");
+        setLoading(false);
+        return;
+      }
 
-      // ③ 再生開始
+      // ④ 再生開始
       setWaitingMessage(null);
+      const m3u8Url = `${baseOrigin}/streamfiles/stream${streamId}.m3u8`;
       try {
         if (canPlayNativeHls()) {
           // Safari (macOS / iOS) はネイティブ HLS
           video.src = m3u8Url;
           video.muted = true;
-          await video.play().catch(() => {
+          video.play().catch(() => {
             /* autoplay 失敗時はユーザーが controls から手動再生 */
           });
         } else {
           // それ以外 (Chrome / Edge / Firefox 等) は hls.js
+          // EPGStation 公式 WebUI と同じく `new Hls()` のみ。オプションは
+          // 入れないこと (lowLatencyMode 等は EPGStation の通常 HLS と相性悪い)。
           const mod = await import("hls.js");
           if (cancelled) return;
           const HlsCtor = mod.default;
           if (!HlsCtor.isSupported()) {
             throw new Error("このブラウザは HLS 再生に対応していません");
           }
-          hls = new HlsCtor({
-            // ライブの低遅延寄り設定
-            lowLatencyMode: true,
-            backBufferLength: 30,
-            maxBufferLength: 10,
-            liveSyncDurationCount: 3,
-          });
-          hls.attachMedia(video);
+          hls = new HlsCtor();
           hls.loadSource(m3u8Url);
+          hls.attachMedia(video);
           hls.on(HlsCtor.Events.MANIFEST_PARSED, () => {
             video.muted = true;
             video.play().catch(() => {
@@ -185,49 +228,55 @@ export default function HlsPlayer({ channel, onStats }: Props) {
         return;
       }
 
-      // ④ 統計情報 (簡易: video element から取れるものだけ)
+      // ⑤ 統計情報
       const onLoadedMeta = () => {
         if (cancelled) return;
         onStatsRef.current?.({
-          resolution: video.videoWidth && video.videoHeight ?
-            `${video.videoWidth} × ${video.videoHeight}` : undefined,
+          resolution:
+            video.videoWidth && video.videoHeight
+              ? `${video.videoWidth} × ${video.videoHeight}`
+              : undefined,
           codec: "HLS (H.264 / AAC)",
         });
         setLoading(false);
       };
       video.addEventListener("loadedmetadata", onLoadedMeta);
 
-      // periodic buffer stats
       const statsTimer = setInterval(() => {
         if (cancelled) return;
         try {
-          const buf = video.buffered.length > 0
-            ? Number(
-                (video.buffered.end(video.buffered.length - 1) - video.currentTime).toFixed(2)
-              )
-            : undefined;
+          const buf =
+            video.buffered.length > 0
+              ? Number(
+                  (
+                    video.buffered.end(video.buffered.length - 1) - video.currentTime
+                  ).toFixed(2)
+                )
+              : undefined;
           onStatsRef.current?.({ buffer: buf });
         } catch {}
       }, 2000);
 
-      // cleanup hooks
-      const cleanups = () => {
+      finalCleanupRef.current = () => {
         try { video.removeEventListener("loadedmetadata", onLoadedMeta); } catch {}
         clearInterval(statsTimer);
       };
-
-      // 終了時用に保存
-      finalCleanupRef.current = cleanups;
     })();
 
     return () => {
       cancelled = true;
       try { ac.abort(); } catch {}
+      if (keepTimer) {
+        clearInterval(keepTimer);
+        keepTimer = null;
+      }
       if (finalCleanupRef.current) {
         try { finalCleanupRef.current(); } catch {}
         finalCleanupRef.current = null;
       }
       if (hls) {
+        try { hls.stopLoad(); } catch {}
+        try { hls.detachMedia(); } catch {}
         try { hls.destroy(); } catch {}
         hls = null;
       }
@@ -236,7 +285,7 @@ export default function HlsPlayer({ channel, onStats }: Props) {
         video.removeAttribute("src");
         video.load();
       } catch {}
-      // ④ サーバ側ストリーム停止
+      // サーバ側ストリーム停止 (チューナー解放)
       if (streamId != null && baseOrigin) {
         const stopUrl = `${baseOrigin}/api/streams/${streamId}`;
         fetch(stopUrl, { method: "DELETE", mode: "cors", credentials: "omit" }).catch(
