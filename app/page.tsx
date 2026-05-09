@@ -37,10 +37,13 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated]);
 
-  // チャンネル切替時に stats をリセット
+  // チャンネル切替時 + ソース切替時に stats をリセット。
+  // selected.id だけだと、別ソース (Mirakurun ↔ EPGStation) の同 channelId
+  // へ切り替わったときに発火せず、古いビットレート等が残る。url も依存に
+  // 入れることでソース切替時もリセットされる。
   useEffect(() => {
     setStats({});
-  }, [selected?.id]);
+  }, [selected?.id, selected?.url]);
 
   const handleStats = useCallback((s: PlaybackStats) => {
     setStats((prev) => ({ ...prev, ...s }));
