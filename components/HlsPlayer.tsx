@@ -188,8 +188,9 @@ export default function HlsPlayer({ channel, onStats }: Props) {
       // ④ 再生開始
       setWaitingMessage(null);
       const m3u8Url = `${baseOrigin}/streamfiles/stream${streamId}.m3u8`;
+      const useNative = canPlayNativeHls();
       try {
-        if (canPlayNativeHls()) {
+        if (useNative) {
           // Safari (macOS / iOS) はネイティブ HLS
           video.src = m3u8Url;
           // muted は強制せず、ブラウザの autoplay policy に任せる:
@@ -210,10 +211,25 @@ export default function HlsPlayer({ channel, onStats }: Props) {
           hls = new HlsCtor();
           hls.loadSource(m3u8Url);
           hls.attachMedia(video);
+
+          // Phase A: hls.js から bitrate を取得 (m3u8 の EXT-X-STREAM-INF or
+          // 単一 rendition の宣言値)。レベル切替時にも更新。
+          const reportLevelBitrate = (levelIdx: number) => {
+            const lv = hls?.levels?.[levelIdx];
+            if (lv && typeof lv.bitrate === "number") {
+              // hls.levels[].bitrate は bps、StatsPanel は kbps を期待
+              onStatsRef.current?.({ bitrate: Math.round(lv.bitrate / 1000) });
+            }
+          };
           hls.on(HlsCtor.Events.MANIFEST_PARSED, () => {
+            const idx = hls!.currentLevel >= 0 ? hls!.currentLevel : 0;
+            reportLevelBitrate(idx);
             video.play().catch(() => {
               /* autoplay 制限時はユーザーが controls から手動再生 */
             });
+          });
+          hls.on(HlsCtor.Events.LEVEL_SWITCHED, (_e, data: { level: number }) => {
+            reportLevelBitrate(data.level);
           });
           hls.on(HlsCtor.Events.ERROR, (_event, data) => {
             if (data.fatal) {
@@ -229,18 +245,64 @@ export default function HlsPlayer({ channel, onStats }: Props) {
       }
 
       // ⑤ 統計情報
+      const reportResolution = () => {
+        if (cancelled) return;
+        if (video.videoWidth && video.videoHeight) {
+          onStatsRef.current?.({
+            resolution: `${video.videoWidth} × ${video.videoHeight}`,
+          });
+        }
+      };
       const onLoadedMeta = () => {
         if (cancelled) return;
-        onStatsRef.current?.({
-          resolution:
-            video.videoWidth && video.videoHeight
-              ? `${video.videoWidth} × ${video.videoHeight}`
-              : undefined,
-          codec: "HLS (H.264 / AAC)",
-        });
+        reportResolution();
+        onStatsRef.current?.({ codec: "HLS (H.264 / AAC)" });
         setLoading(false);
       };
       video.addEventListener("loadedmetadata", onLoadedMeta);
+      // level switch / 解像度切替に追従
+      video.addEventListener("resize", reportResolution);
+
+      // Phase B: Safari ネイティブ HLS は hls.js のレベル情報を持たないので、
+      // PerformanceResourceTiming で .ts セグメントの実 transfer size を
+      // 5秒スライディングウィンドウで合算してビットレートを計算する。
+      let perfObserver: PerformanceObserver | null = null;
+      const segmentSamples: Array<{ t: number; bytes: number }> = [];
+      if (useNative && typeof PerformanceObserver !== "undefined" && baseOrigin) {
+        try {
+          perfObserver = new PerformanceObserver((list) => {
+            if (cancelled) return;
+            const now = performance.now();
+            for (const entry of list.getEntries()) {
+              const re = entry as PerformanceResourceTiming;
+              // 同一オリジンの .ts セグメントだけ拾う
+              if (
+                re.name.startsWith(baseOrigin!) &&
+                /\.ts(\?|$)/i.test(re.name) &&
+                re.transferSize > 0
+              ) {
+                segmentSamples.push({ t: now, bytes: re.transferSize });
+              }
+            }
+            // 5秒より古いサンプルを捨てる
+            const cutoff = now - 5000;
+            while (segmentSamples.length && segmentSamples[0].t < cutoff) {
+              segmentSamples.shift();
+            }
+            if (segmentSamples.length >= 2) {
+              const totalBytes = segmentSamples.reduce((a, s) => a + s.bytes, 0);
+              const span = (now - segmentSamples[0].t) / 1000;
+              if (span > 0) {
+                const kbps = (totalBytes * 8) / 1000 / span;
+                onStatsRef.current?.({ bitrate: Math.round(kbps) });
+              }
+            }
+          });
+          perfObserver.observe({ type: "resource", buffered: false });
+        } catch {
+          /* PerformanceObserver 非対応や buffered 形式が違う場合は無視 */
+        }
+      }
 
       const statsTimer = setInterval(() => {
         if (cancelled) return;
@@ -259,7 +321,11 @@ export default function HlsPlayer({ channel, onStats }: Props) {
 
       finalCleanupRef.current = () => {
         try { video.removeEventListener("loadedmetadata", onLoadedMeta); } catch {}
+        try { video.removeEventListener("resize", reportResolution); } catch {}
         clearInterval(statsTimer);
+        if (perfObserver) {
+          try { perfObserver.disconnect(); } catch {}
+        }
       };
     })();
 

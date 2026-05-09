@@ -212,6 +212,24 @@ export default function TsLivePlayer({
         return;
       }
 
+      // Phase C: 入力 TS のスループットから bitrate を計算する。
+      // 1秒ごとに直近のバイト数差分を取り kbps に変換 → onStats へ。
+      let totalBytesIn = 0;
+      let lastBytesIn = 0;
+      let lastSampleAt = performance.now();
+      const bitrateTimer = setInterval(() => {
+        if (cancelled) return;
+        const now = performance.now();
+        const dtSec = (now - lastSampleAt) / 1000;
+        if (dtSec > 0) {
+          const dBytes = totalBytesIn - lastBytesIn;
+          const kbps = (dBytes * 8) / 1000 / dtSec;
+          onStatsRef.current?.({ bitrate: Math.round(kbps) });
+        }
+        lastSampleAt = now;
+        lastBytesIn = totalBytesIn;
+      }, 1000);
+
       try {
         const res = await fetch(
           parsed.url.toString(),
@@ -231,6 +249,7 @@ export default function TsLivePlayer({
             const buf = mod.getNextInputBuffer(value.length);
             buf.set(value);
             mod.commitInputData(value.length);
+            totalBytesIn += value.length;
           } catch (ex) {
             if (typeof ex === "number") {
               const msg = mod.getExceptionMsg(ex);
@@ -248,6 +267,8 @@ export default function TsLivePlayer({
         if (e instanceof Error && e.name === "AbortError") return;
         setError(e instanceof Error ? e.message : String(e));
         setLoading(false);
+      } finally {
+        clearInterval(bitrateTimer);
       }
     })();
 
