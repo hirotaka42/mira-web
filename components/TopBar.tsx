@@ -15,7 +15,18 @@ export default function TopBar({ onOpenSettings }: Props) {
   const selected = useSelectedChannel();
 
   return (
-    <header className="h-14 flex items-center px-4 gap-3 bg-slate-800 border-b border-slate-700 shrink-0">
+    // PWA standalone (iOS) で status bar / Dynamic Island の下に潜り込まない
+    // よう、ヘッダの上端に safe-area-inset-top を内側余白として確保する。
+    // 横向き時のノッチ対策で左右にも safe-area を反映。
+    <header
+      className="h-14 flex items-center px-4 gap-3 bg-slate-800 border-b border-slate-700 shrink-0"
+      style={{
+        paddingTop: "max(env(safe-area-inset-top), 0px)",
+        paddingLeft: "max(env(safe-area-inset-left), 1rem)",
+        paddingRight: "max(env(safe-area-inset-right), 1rem)",
+        height: "calc(3.5rem + env(safe-area-inset-top))",
+      }}
+    >
       <button
         onClick={toggleSidebar}
         className="w-9 h-9 rounded-md flex items-center justify-center text-slate-300 hover:bg-slate-700 transition-colors"

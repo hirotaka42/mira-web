@@ -15,7 +15,10 @@
 html, body {
   background: var(--background);
   color: var(--foreground);
+  /* iOS Safari の dynamic toolbar / PWA standalone でも正しく viewport を埋めるため
+     dvh (visible viewport height) を採用。フォールバックとして 100% も指定 */
   height: 100%;
+  height: 100dvh;
   overscroll-behavior: none;
 }
 

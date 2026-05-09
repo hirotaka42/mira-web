@@ -59,9 +59,17 @@ export default function Sidebar() {
     return () => cancelAnimationFrame(id);
   }, [channels.length, selectedId, collapsed]);
 
+  // 横向き iOS で左ノッチ領域に潜り込まないよう safe-area-inset-left を反映
+  const safeLeftStyle: React.CSSProperties = {
+    paddingLeft: "env(safe-area-inset-left)",
+  };
+
   if (collapsed) {
     return (
-      <aside className="w-14 bg-slate-800 border-r border-slate-700 shrink-0 overflow-hidden flex flex-col">
+      <aside
+        style={safeLeftStyle}
+        className="w-14 bg-slate-800 border-r border-slate-700 shrink-0 overflow-hidden flex flex-col"
+      >
         <div className="flex flex-col items-center py-4 gap-3">
           {Array.from(grouped.keys()).map((g) => {
             const Icon = GROUP_ICON[g] ?? Tv;
@@ -81,7 +89,10 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-72 bg-slate-800 border-r border-slate-700 shrink-0 flex flex-col overflow-hidden">
+    <aside
+      style={safeLeftStyle}
+      className="w-72 bg-slate-800 border-r border-slate-700 shrink-0 flex flex-col overflow-hidden"
+    >
       <div className="p-3 border-b border-slate-700">
         <div className="relative">
           <Search

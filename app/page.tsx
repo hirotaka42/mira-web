@@ -53,7 +53,15 @@ export default function Page() {
       <div className="flex-1 flex min-h-0">
         <Sidebar />
 
-        <main className="flex-1 overflow-y-auto p-4 bg-slate-900">
+        <main
+          className="flex-1 overflow-y-auto p-4 bg-slate-900"
+          // PWA standalone (iOS) でホームインジケータ領域に潜り込まないよう
+          // 下端と右端に safe-area を反映。最低でも 1rem は確保。
+          style={{
+            paddingBottom: "max(env(safe-area-inset-bottom), 1rem)",
+            paddingRight: "max(env(safe-area-inset-right), 1rem)",
+          }}
+        >
           {selected?.kind === "epgstation-hls" ? (
             <HlsPlayer channel={selected} onStats={handleStats} />
           ) : (

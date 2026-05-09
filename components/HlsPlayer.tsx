@@ -2,8 +2,62 @@
 
 import { useEffect, useRef, useState } from "react";
 import type Hls from "hls.js";
+import { PictureInPicture2 } from "lucide-react";
 import type { Channel, PlaybackStats } from "@/lib/types";
 import { buildFetchInit, mixedContentWarning, validateUrl } from "@/lib/safeFetch";
+
+/** Picture-in-Picture をサポートするか (W3C / WebKit のいずれか) */
+function isPipSupported(): boolean {
+  if (typeof document === "undefined") return false;
+  // W3C
+  if ("pictureInPictureEnabled" in document && (document as Document).pictureInPictureEnabled) {
+    return true;
+  }
+  // WebKit (Safari iOS / macOS)
+  const v = document.createElement("video") as HTMLVideoElement & {
+    webkitSupportsPresentationMode?: (mode: string) => boolean;
+  };
+  if (typeof v.webkitSupportsPresentationMode === "function") {
+    try {
+      return v.webkitSupportsPresentationMode("picture-in-picture");
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+interface VideoWithWebkitPiP extends HTMLVideoElement {
+  webkitSupportsPresentationMode?: (mode: string) => boolean;
+  webkitSetPresentationMode?: (mode: string) => void;
+  webkitPresentationMode?: string;
+}
+
+async function togglePictureInPicture(video: HTMLVideoElement | null): Promise<void> {
+  if (!video) return;
+  const v = video as VideoWithWebkitPiP;
+  // W3C 優先
+  if (
+    typeof document !== "undefined" &&
+    "pictureInPictureEnabled" in document &&
+    document.pictureInPictureEnabled
+  ) {
+    if (document.pictureInPictureElement === video) {
+      await document.exitPictureInPicture();
+    } else {
+      await video.requestPictureInPicture();
+    }
+    return;
+  }
+  // WebKit fallback
+  if (typeof v.webkitSetPresentationMode === "function") {
+    if (v.webkitPresentationMode === "picture-in-picture") {
+      v.webkitSetPresentationMode("inline");
+    } else {
+      v.webkitSetPresentationMode("picture-in-picture");
+    }
+  }
+}
 
 /**
  * EPGStation の HLS ライブストリームを再生するプレイヤー。
@@ -62,10 +116,15 @@ export default function HlsPlayer({ channel, onStats }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [waitingMessage, setWaitingMessage] = useState<string | null>(null);
+  const [pipSupported, setPipSupported] = useState(false);
 
   useEffect(() => {
     onStatsRef.current = onStats;
   }, [onStats]);
+
+  useEffect(() => {
+    setPipSupported(isPipSupported());
+  }, []);
 
   useEffect(() => {
     if (!channel) {
@@ -334,6 +393,27 @@ export default function HlsPlayer({ channel, onStats }: Props) {
           </div>
         </div>
       )}
+      {/*
+        PiP ボタン: PWA standalone (iOS) では native video controls の PiP
+        ボタンが消えるため、独自に提供する。W3C requestPictureInPicture が
+        無ければ WebKit webkitSetPresentationMode を使う。
+      */}
+      {pipSupported && !error && (
+        <button
+          type="button"
+          onClick={() => {
+            togglePictureInPicture(videoRef.current).catch(() => {
+              /* user gesture でない場合等は無視 */
+            });
+          }}
+          className="absolute top-3 left-3 w-9 h-9 rounded-md flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 text-slate-200 hover:bg-black/80 hover:text-cyan-300 transition-colors"
+          aria-label="ピクチャ・イン・ピクチャ切替"
+          title="PiP"
+        >
+          <PictureInPicture2 size={16} />
+        </button>
+      )}
+
       <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded bg-black/60 backdrop-blur-sm text-xs text-slate-200 border border-white/5 pointer-events-none">
         <span className="text-emerald-400 mr-2">●</span>
         HLS · {channel.name}
