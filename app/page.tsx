@@ -14,16 +14,19 @@ import type { PlaybackStats } from "@/lib/types";
 export default function Page() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stats, setStats] = useState<PlaybackStats>({});
+  const hydrated = useStore((s) => s._hydrated);
   const hasSource = useStore((s) => !!s.source);
   const channels = useStore((s) => s.channels);
   const reload = useStore((s) => s.reload);
   const selected = useSelectedChannel();
 
-  // 初回ロード:
-  //   - 永続化済 source があれば再取得
-  //   - なければ設定モーダルを開く (URL タブには NEXT_PUBLIC_DEFAULT_PLAYLIST_URL
-  //     がプリフィルされる。読み込みは必ずユーザーがボタンを押して実行)
+  // 初回ロード: localStorage の hydrate 完了を待ってから判断する
+  //   - hydrate 後に source が残っていれば再取得 (= モーダル開かない)
+  //   - 何もなければ設定モーダルを開く
+  // hydrate 待ちにしないと、SSG/CSR の境目で「hydrate 前に modal を開く」
+  // 不具合が出ることがある (リロード後に毎回 modal が出る現象)。
   useEffect(() => {
+    if (!hydrated) return;
     if (hasSource && channels.length === 0) {
       reload().catch(() => {});
       return;
@@ -32,7 +35,7 @@ export default function Page() {
       setSettingsOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hydrated]);
 
   // チャンネル切替時に stats をリセット
   useEffect(() => {

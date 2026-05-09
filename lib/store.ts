@@ -20,6 +20,10 @@ interface State {
   loading: boolean;
   error: string | null;
 
+  /** localStorage からの hydrate が完了したか (UI 初期表示の制御に使う) */
+  _hydrated: boolean;
+  _markHydrated: () => void;
+
   setSource: (src: M3uSource) => Promise<void>;
   setSearch: (s: string) => void;
   toggleSidebar: () => void;
@@ -69,6 +73,8 @@ export const useStore = create<State>()(
       search: "",
       loading: false,
       error: null,
+      _hydrated: false,
+      _markHydrated: () => set({ _hydrated: true }),
 
       setSource: async (src) => {
         set({ loading: true, error: null });
@@ -125,6 +131,12 @@ export const useStore = create<State>()(
         selectedId: s.selectedId,
         sidebarCollapsed: s.sidebarCollapsed,
       }),
+      // localStorage から restore 完了を待ってから初回 UI 判断するためのフラグ。
+      // SSG/Static Export で稀にあるレース (useEffect が hydrate より早く走る) を防ぐ。
+      onRehydrateStorage: () => (state) => {
+        // hydrate 成功時にフラグ立て (失敗時 state は undefined)
+        state?._markHydrated();
+      },
     }
   )
 );
