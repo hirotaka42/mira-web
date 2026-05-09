@@ -16,30 +16,19 @@ export default function Page() {
   const hasSource = useStore((s) => !!s.source);
   const channels = useStore((s) => s.channels);
   const reload = useStore((s) => s.reload);
-  const setSource = useStore((s) => s.setSource);
   const selected = useSelectedChannel();
 
-  // build-time の既定 URL (CI で repo Variable から注入)
-  const defaultUrl = process.env.NEXT_PUBLIC_DEFAULT_PLAYLIST_URL ?? "";
-
   // 初回ロード:
-  //   1) 永続化済 source があれば再取得
-  //   2) なくて build-time 既定 URL があれば自動読み込み
-  //   3) どちらも無ければ設定モーダルを開く
+  //   - 永続化済 source があれば再取得
+  //   - なければ設定モーダルを開く (URL タブには NEXT_PUBLIC_DEFAULT_PLAYLIST_URL
+  //     がプリフィルされる。読み込みは必ずユーザーがボタンを押して実行)
   useEffect(() => {
     if (hasSource && channels.length === 0) {
       reload().catch(() => {});
       return;
     }
     if (!hasSource) {
-      if (defaultUrl) {
-        setSource({ kind: "url", value: defaultUrl }).catch(() => {
-          // 失敗時はモーダルを開いて手動入力を促す
-          setSettingsOpen(true);
-        });
-      } else {
-        setSettingsOpen(true);
-      }
+      setSettingsOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
