@@ -2,62 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type Hls from "hls.js";
-import { PictureInPicture2 } from "lucide-react";
 import type { Channel, PlaybackStats } from "@/lib/types";
 import { buildFetchInit, mixedContentWarning, validateUrl } from "@/lib/safeFetch";
-
-/** Picture-in-Picture をサポートするか (W3C / WebKit のいずれか) */
-function isPipSupported(): boolean {
-  if (typeof document === "undefined") return false;
-  // W3C
-  if ("pictureInPictureEnabled" in document && (document as Document).pictureInPictureEnabled) {
-    return true;
-  }
-  // WebKit (Safari iOS / macOS)
-  const v = document.createElement("video") as HTMLVideoElement & {
-    webkitSupportsPresentationMode?: (mode: string) => boolean;
-  };
-  if (typeof v.webkitSupportsPresentationMode === "function") {
-    try {
-      return v.webkitSupportsPresentationMode("picture-in-picture");
-    } catch {
-      return false;
-    }
-  }
-  return false;
-}
-
-interface VideoWithWebkitPiP extends HTMLVideoElement {
-  webkitSupportsPresentationMode?: (mode: string) => boolean;
-  webkitSetPresentationMode?: (mode: string) => void;
-  webkitPresentationMode?: string;
-}
-
-async function togglePictureInPicture(video: HTMLVideoElement | null): Promise<void> {
-  if (!video) return;
-  const v = video as VideoWithWebkitPiP;
-  // W3C 優先
-  if (
-    typeof document !== "undefined" &&
-    "pictureInPictureEnabled" in document &&
-    document.pictureInPictureEnabled
-  ) {
-    if (document.pictureInPictureElement === video) {
-      await document.exitPictureInPicture();
-    } else {
-      await video.requestPictureInPicture();
-    }
-    return;
-  }
-  // WebKit fallback
-  if (typeof v.webkitSetPresentationMode === "function") {
-    if (v.webkitPresentationMode === "picture-in-picture") {
-      v.webkitSetPresentationMode("inline");
-    } else {
-      v.webkitSetPresentationMode("picture-in-picture");
-    }
-  }
-}
 
 /**
  * EPGStation の HLS ライブストリームを再生するプレイヤー。
@@ -116,15 +62,10 @@ export default function HlsPlayer({ channel, onStats }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [waitingMessage, setWaitingMessage] = useState<string | null>(null);
-  const [pipSupported, setPipSupported] = useState(false);
 
   useEffect(() => {
     onStatsRef.current = onStats;
   }, [onStats]);
-
-  useEffect(() => {
-    setPipSupported(isPipSupported());
-  }, []);
 
   useEffect(() => {
     if (!channel) {
@@ -369,62 +310,34 @@ export default function HlsPlayer({ channel, onStats }: Props) {
   }
 
   return (
-    <div className="w-full">
-      <div className="relative aspect-video w-full rounded-lg bg-black overflow-hidden shadow-2xl shadow-black/50">
-        <video
-          key={channel.id}
-          ref={videoRef}
-          className="absolute inset-0 w-full h-full object-contain"
-          controls
-          autoPlay
-          playsInline
-        />
-        {loading && !error && (
-          <div className="absolute top-3 right-3 px-3 py-1.5 rounded-md bg-black/70 backdrop-blur text-cyan-400 text-xs border border-cyan-500/30 animate-pulse pointer-events-none max-w-[80%] truncate">
-            {waitingMessage ?? "読み込み中…"} {channel.name}
-          </div>
-        )}
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/85 p-6 z-10">
-            <div className="max-w-md text-center">
-              <div className="text-red-400 text-sm font-mono mb-2 break-all">{error}</div>
-              <div className="text-slate-500 text-xs">
-                EPGStation 側で CORS / HTTPS / トランスコード設定が必要です
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded bg-black/60 backdrop-blur-sm text-xs text-slate-200 border border-white/5 pointer-events-none">
-          <span className="text-emerald-400 mr-2">●</span>
-          HLS · {channel.name}
-        </div>
-      </div>
-
-      {/*
-        PiP / 追加操作バー — video 要素の外に置くことで iOS native controls との
-        タップ競合を回避する (PWA standalone の iOS では native PiP ボタンが
-        出ないので独自に提供)。
-      */}
-      {!error && (
-        <div className="mt-2 flex items-center justify-end gap-2">
-          {pipSupported && (
-            <button
-              type="button"
-              onClick={() => {
-                togglePictureInPicture(videoRef.current).catch(() => {
-                  /* user gesture 不在等は無視 */
-                });
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-300 transition-colors"
-              aria-label="ピクチャ・イン・ピクチャ切替"
-              title="ピクチャ・イン・ピクチャ"
-            >
-              <PictureInPicture2 size={14} />
-              <span>PiP</span>
-            </button>
-          )}
+    <div className="relative aspect-video w-full rounded-lg bg-black overflow-hidden shadow-2xl shadow-black/50">
+      <video
+        key={channel.id}
+        ref={videoRef}
+        className="absolute inset-0 w-full h-full object-contain"
+        controls
+        autoPlay
+        playsInline
+      />
+      {loading && !error && (
+        <div className="absolute top-3 right-3 px-3 py-1.5 rounded-md bg-black/70 backdrop-blur text-cyan-400 text-xs border border-cyan-500/30 animate-pulse pointer-events-none max-w-[80%] truncate">
+          {waitingMessage ?? "読み込み中…"} {channel.name}
         </div>
       )}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/85 p-6 z-10">
+          <div className="max-w-md text-center">
+            <div className="text-red-400 text-sm font-mono mb-2 break-all">{error}</div>
+            <div className="text-slate-500 text-xs">
+              EPGStation 側で CORS / HTTPS / トランスコード設定が必要です
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded bg-black/60 backdrop-blur-sm text-xs text-slate-200 border border-white/5 pointer-events-none">
+        <span className="text-emerald-400 mr-2">●</span>
+        HLS · {channel.name}
+      </div>
     </div>
   );
 }

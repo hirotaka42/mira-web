@@ -55,10 +55,10 @@ export default function Page() {
 
         <main
           className="flex-1 overflow-y-auto p-4 bg-slate-900"
-          // PWA standalone (iOS) でホームインジケータ領域に潜り込まないよう
-          // 下端と右端に safe-area を反映。最低でも 1rem は確保。
+          // 横向き iOS で右ノッチを避ける。下端は viewport 端まで bg-slate-900
+          // を伸ばし、ホームインジケータは slate-900 上に半透明で乗る形にする
+          // (padding-bottom を入れると下端に大きな空白が見えるので付けない)。
           style={{
-            paddingBottom: "max(env(safe-area-inset-bottom), 1rem)",
             paddingRight: "max(env(safe-area-inset-right), 1rem)",
           }}
         >
@@ -76,6 +76,14 @@ export default function Page() {
               右上の <span className="text-cyan-400">設定</span> から m3u を登録してください。
             </div>
           )}
+          {/*
+            ホームインジケータ領域分のスクロール余白だけ確保。bg は main の
+            slate-900 が viewport 末端まで伸びるため、見た目の "底浮き" は出ない。
+          */}
+          <div
+            aria-hidden
+            style={{ height: "env(safe-area-inset-bottom)" }}
+          />
         </main>
       </div>
 
