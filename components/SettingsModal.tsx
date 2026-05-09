@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardPaste, Link2, Trash2, Type, Upload, X } from "lucide-react";
+import { ClipboardPaste, Eraser, Link2, Trash2, Type, Upload, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { getDefaultPresetUrl, getPlaylistPresets } from "@/lib/presets";
+import { clearAllAppCaches } from "@/lib/cacheReset";
 
 interface Props {
   open: boolean;
@@ -25,6 +26,7 @@ export default function SettingsModal({ open, onClose }: Props) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pasted, setPasted] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // build-time に CI から注入されるプリセット (任意 / 0..N)
@@ -256,19 +258,47 @@ export default function SettingsModal({ open, onClose }: Props) {
           )}
         </div>
 
-        <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-700 bg-slate-900/60">
-          <button
-            onClick={() => {
-              clear();
-              setUrl("");
-              setText("");
-              setError(null);
-            }}
-            disabled={!currentSource}
-            className="text-xs text-slate-500 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
-          >
-            <Trash2 size={12} /> 設定を削除
-          </button>
+        <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-700 bg-slate-900/60 gap-3 flex-wrap">
+          <div className="flex items-center gap-4 flex-wrap">
+            <button
+              onClick={() => {
+                clear();
+                setUrl("");
+                setText("");
+                setError(null);
+              }}
+              disabled={!currentSource}
+              className="text-xs text-slate-500 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              <Trash2 size={12} /> 設定を削除
+            </button>
+            <button
+              onClick={async () => {
+                if (clearingCache) return;
+                if (
+                  !window.confirm(
+                    "Service Worker と PWA キャッシュをクリアしてリロードします。\n" +
+                      "(m3u 設定や選択チャンネルは維持されます)"
+                  )
+                ) {
+                  return;
+                }
+                setClearingCache(true);
+                try {
+                  await clearAllAppCaches();
+                } finally {
+                  // SW 解除直後に reload。新しい SW が再登録される
+                  window.location.reload();
+                }
+              }}
+              disabled={clearingCache}
+              className="text-xs text-slate-500 hover:text-cyan-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+              title="Service Worker と Cache Storage を消去 (m3u 設定は残る)"
+            >
+              <Eraser size={12} />{" "}
+              {clearingCache ? "クリア中…" : "キャッシュをクリア"}
+            </button>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={onClose}
