@@ -1,0 +1,86 @@
+# mira-web
+
+Static browser-only Mirakurun IPTV viewer — WASM (ts-live.js) decoding, m3u stored in localStorage.
+
+ブラウザだけで完結する Mirakurun 互換 IPTV プレイヤーです。サーバ側でストリームを処理しないため、GitHub Pages のような完全静的ホスティングにそのままデプロイできます。
+
+## 特徴
+
+- **完全静的**: API ルートなし。GitHub Pages / Cloudflare Pages / 任意の静的ホストで動作
+- **ブラウザ内デコード**: [`ts-live.js`](https://github.com/kounoike/ts-live) (Emscripten + ffmpeg + WebGPU + WebCodecs) で MPEG-2 video / AAC を復号
+- **m3u はローカル保存のみ**: 設定はブラウザの `localStorage` にのみ保存。サーバ側に何も置かない
+- **Mirakurun への通信もブラウザから直接**: 中継サーバなし。Tailscale など private network 越しでも Private Network Access で対応
+- **収納式サイドバー UI**: チャンネル選択 / 検索 / EPG・統計パネル
+
+## ブラウザ要件
+
+- **Chrome / Edge 113+** または **Safari 18+**
+- WebGPU / WebCodecs / SharedArrayBuffer 対応必須
+- Firefox は WebGPU が experimental flag のためデフォルトでは不可
+
+## ホスティング側要件
+
+GitHub Pages のように HTTP ヘッダを足せないホストでも、同梱の Service Worker (`public/coi-serviceworker.js`) が `Cross-Origin-Opener-Policy: same-origin` / `Cross-Origin-Embedder-Policy: require-corp` を注入するため `SharedArrayBuffer` が利用できるようになります。初回訪問時に 1 回だけ自動リロードが入ります。
+
+## Mirakurun 側に必要な設定
+
+ブラウザから直接 Mirakurun に接続するため、以下の 2 点が必要です。
+
+1. **Mirakurun を HTTPS で公開する**
+   GitHub Pages は HTTPS のため、Mirakurun が `http://` のままだと mixed-content でブロックされます。下記のいずれかで HTTPS 化してください。
+   - Tailscale Funnel (`tailscale funnel ...`)
+   - Cloudflare Tunnel (`cloudflared`)
+   - リバースプロキシ (Caddy 等) + Let's Encrypt
+
+2. **Mirakurun の `allowOrigins` に Pages の URL を追加**
+   `~/.config/mirakurun/server.yml` または `/etc/mirakurun/server.yml`:
+   ```yaml
+   allowOrigins:
+     - "https://<your-username>.github.io"
+   allowPNA: true
+   ```
+   追加後 Mirakurun を再起動。`allowPNA: true` は Tailscale や LAN 上のホストへ public origin から PNA preflight 経由で接続する場合に必要 (デフォルト true)。
+
+## 開発
+
+```bash
+npm install
+npm run dev
+# → http://localhost:3000
+```
+
+ローカル dev でも Cross-Origin Isolation が必要なので、初回アクセス時に Service Worker 登録のため自動リロードが入ります。Mirakurun の `allowOrigins` に `http://localhost:3000` も追加しておくと便利。
+
+### 主要コマンド
+
+| | |
+|---|---|
+| `npm run dev` | 開発サーバ |
+| `npm run build` | 静的書き出し → `out/` |
+| `npm run typecheck` | TypeScript 型検査のみ |
+
+## デプロイ (GitHub Pages)
+
+1. GitHub リポジトリの **Settings → Pages** で source を **GitHub Actions** に設定
+2. `main` に push すると [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) が走って自動デプロイ
+3. 数十秒後 `https://<user>.github.io/<repo>/` で公開
+
+### サブパスの取り扱い
+
+ワークフローでは環境変数 `NEXT_PUBLIC_BASE_PATH=/<repo>` を渡しています ([deploy.yml](.github/workflows/deploy.yml))。
+
+- **ユーザーサイト** (`<user>.github.io` 直下にデプロイ) や **カスタムドメイン (CNAME)** を使う場合は、`NEXT_PUBLIC_BASE_PATH` を空文字に変更してください
+
+## セキュリティ
+
+- 設定 (m3u URL / 貼付けテキスト / 選択チャンネル) はブラウザの `localStorage` にのみ保存。リモートに送られない
+- 全ての fetch は `credentials: "omit"` で発行 (Cookie 漏洩なし)
+- ユーザー入力 URL は `http/https` プロトコルだけに制限
+- mixed-content 検出時は早期エラー
+- リポジトリには `.m3u` ファイルを含めない (`.gitignore` 済)
+
+## 謝辞
+
+- [Mirakurun](https://github.com/Chinachu/Mirakurun) — DVR Tuner Server for Japanese TV
+- [ts-live.js](https://github.com/kounoike/ts-live) — Emscripten ベースのブラウザ内 MPEG-TS デコーダ
+- [coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker) — Cross-Origin Isolation 注入の実装パターン
