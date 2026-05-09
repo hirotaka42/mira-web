@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { X, Upload, Link2, Type, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ClipboardPaste, Link2, Trash2, Type, Upload, X } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { getDefaultPresetUrl, getPlaylistPresets } from "@/lib/presets";
 
 interface Props {
   open: boolean;
@@ -23,10 +24,12 @@ export default function SettingsModal({ open, onClose }: Props) {
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pasted, setPasted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // build-time に CI から注入された既定 URL (空文字なら未設定)
-  const defaultUrl = process.env.NEXT_PUBLIC_DEFAULT_PLAYLIST_URL ?? "";
+  // build-time に CI から注入されるプリセット (任意 / 0..N)
+  const presets = useMemo(() => getPlaylistPresets(), []);
+  const defaultUrl = useMemo(() => getDefaultPresetUrl(), []);
 
   useEffect(() => {
     if (!open) return;
@@ -38,7 +41,6 @@ export default function SettingsModal({ open, onClose }: Props) {
       setTab("text");
       setText(currentSource.value);
     } else if (defaultUrl) {
-      // 永続化された source も無し、build-time 既定 URL があればプリフィル
       setTab("url");
       setUrl(defaultUrl);
     }
@@ -90,6 +92,27 @@ export default function SettingsModal({ open, onClose }: Props) {
     }
   }
 
+  async function pasteFromClipboard() {
+    setError(null);
+    if (typeof navigator === "undefined" || !navigator.clipboard?.readText) {
+      setError("このブラウザはクリップボード読み取りに対応していません");
+      return;
+    }
+    try {
+      const t = await navigator.clipboard.readText();
+      const trimmed = t.trim();
+      if (!trimmed) {
+        setError("クリップボードが空です");
+        return;
+      }
+      setUrl(trimmed);
+      setPasted(true);
+      setTimeout(() => setPasted(false), 1200);
+    } catch {
+      setError("クリップボードの読み取りが拒否されました (権限を許可してください)");
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
@@ -132,17 +155,56 @@ export default function SettingsModal({ open, onClose }: Props) {
         <div className="px-5 py-5 min-h-[260px]">
           {tab === "url" && (
             <div>
+              {presets.length >= 2 && (
+                <div className="mb-3">
+                  <label className="block text-xs text-slate-400 mb-1.5">プリセット</label>
+                  <select
+                    value={presets.find((p) => p.url === url)?.url ?? ""}
+                    onChange={(e) => {
+                      if (e.target.value) setUrl(e.target.value);
+                    }}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                  >
+                    <option value="">— 選択 (任意) —</option>
+                    {presets.map((p) => (
+                      <option key={p.url} value={p.url}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <label className="block text-xs text-slate-400 mb-2">
-                Mirakurun の m3u エンドポイント
+                プレイリスト URL (Mirakurun の m3u / EPGStation の /api/channels)
               </label>
-              <input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="http://mirakurun.example:40772/api/iptv/playlist"
-                className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500 font-mono"
-              />
+              <div className="flex gap-2">
+                <input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://your-host/api/iptv/playlist  または  https://your-host/api/channels"
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded-md px-3 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500 font-mono"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !loading) applyUrl();
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={pasteFromClipboard}
+                  className={`shrink-0 w-10 h-10.5 flex items-center justify-center rounded-md border transition-colors ${
+                    pasted
+                      ? "bg-emerald-700/30 border-emerald-500/60 text-emerald-300"
+                      : "bg-slate-950 border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-300"
+                  }`}
+                  title="クリップボードから貼り付け"
+                  aria-label="クリップボードから貼り付け"
+                >
+                  <ClipboardPaste size={16} />
+                </button>
+              </div>
               <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-                サーバ側でプロキシ取得します (CORS 不要)。Next.js サーバから対象ホストへ到達できる必要があります。
+                Mirakurun の URL → ts-live.js モード (高画質、PC のみ) / EPGStation の{" "}
+                <code className="text-slate-400">/api/channels</code> → HLS モード (iOS 含む全環境) で自動切替
               </p>
             </div>
           )}

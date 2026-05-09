@@ -95,17 +95,33 @@ npm run dev
 
 ### m3u プレイリスト URL のプリセット (任意)
 
-GitHub の **Settings → Secrets and variables → Actions → Variables** で
-`DEFAULT_PLAYLIST_URL` という名前の **Variable** を作って値に
-`https://<your-mirakurun-host>/api/iptv/playlist` を入れると、デプロイ時に
-`NEXT_PUBLIC_DEFAULT_PLAYLIST_URL` として埋め込まれます。動作:
+GitHub の **Settings → Secrets and variables → Actions → Variables** に以下のいずれかを設定すると、設定モーダルの URL タブにプリフィルされます。
 
-- 永続化された設定がない初回アクセス時、自動で読み込み
-- 設定モーダルの URL タブにプリフィル
+#### 方式1: 複数プリセット (推奨)
+
+`PLAYLIST_PRESETS` という Variable に **JSON 配列**:
+
+```json
+[
+  {"name": "EPGStation HLS (iOS OK)", "url": "https://your-epgstation/api/channels"},
+  {"name": "Mirakurun (高画質)",      "url": "https://your-mirakurun/api/iptv/playlist"}
+]
+```
+
+- 1件目が URL タブの初期値 (プリフィル)
+- 2件以上ある場合は **ドロップダウン**で切替可能
+
+#### 方式2: 単一 URL のみ (後方互換)
+
+`DEFAULT_PLAYLIST_URL` という Variable に URL 1 つだけ。`PLAYLIST_PRESETS` が未設定のときに使われる。
 
 > Tailscale など private network 経由でしか到達しないホストならば、URL 自体は
 > 公開しても実害はないため Variable で問題ありません。public exposed な
-> Mirakurun の URL は Variable に置かないでください。
+> Mirakurun / EPGStation の URL は Variable に置かないでください。
+
+### URL のクリップボード貼付
+
+URL 入力欄の右側にある **クリップボードボタン**で `navigator.clipboard.readText()` から URL を貼り付けられます (権限プロンプトが出る場合があります)。
 
 ## セキュリティ
 

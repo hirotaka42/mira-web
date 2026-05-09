@@ -41,9 +41,12 @@ jobs:
           # プロジェクトサイトの場合はサブパスが /<repo>/ になる。
           # ユーザーサイト (<user>.github.io) や CNAME 利用時は空文字に上書きすること。
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-          # 既定の m3u プレイリスト URL。リポジトリ Variables の
-          # `DEFAULT_PLAYLIST_URL` に設定されていればプリフィル + 自動読み込み。
-          # 未設定なら通常通り設定モーダルが開く。
+          # プレイリストのプリセット (複数可)。
+          # リポジトリ Variables の `PLAYLIST_PRESETS` に JSON 配列で:
+          #   [{"name":"EPGStation HLS","url":"https://..."}, ...]
+          # 1 件目が URL タブの初期値、2 件以上ならドロップダウンに表示。
+          NEXT_PUBLIC_PLAYLIST_PRESETS: ${{ vars.PLAYLIST_PRESETS }}
+          # 単一 URL のみ設定する場合の後方互換 (上記が無いときに使われる)
           NEXT_PUBLIC_DEFAULT_PLAYLIST_URL: ${{ vars.DEFAULT_PLAYLIST_URL }}
         run: npm run build
 
