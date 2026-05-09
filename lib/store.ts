@@ -36,7 +36,21 @@ interface State {
 async function loadFromSource(
   src: M3uSource
 ): Promise<{ text: string; baseUrl?: URL }> {
-  if (src.kind === "text") return { text: src.value };
+  if (src.kind === "text") {
+    // テキスト or ファイル経由の m3u は fetch URL が無いので、ユーザが指定した
+    // baseUrl があればそれを使ってチャンネル URL の scheme/host を書き換える。
+    // Mirakurun の m3u は内部の http:// が埋まるため、HTTPS ページから扱うには
+    // ここで base を当てて https に揃える必要がある。
+    let baseUrl: URL | undefined;
+    if (src.baseUrl) {
+      try {
+        baseUrl = new URL(src.baseUrl);
+      } catch {
+        // 不正な base URL は無視 (rewrite 無し動作にフォールバック)
+      }
+    }
+    return { text: src.value, baseUrl };
+  }
 
   // 静的サイトなのでブラウザから直接 Mirakurun / EPGStation を叩く。
   // 各サーバ側で allowOrigins / CORS にこのオリジンを許可しておく必要あり。

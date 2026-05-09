@@ -24,6 +24,8 @@ export default function SettingsModal({ open, onClose }: Props) {
   const [tab, setTab] = useState<Tab>("url");
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
+  // テキスト/ファイルモード時に内部 http:// → https:// などへ書き換えるための base
+  const [baseUrl, setBaseUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pasted, setPasted] = useState(false);
   const [clearingCache, setClearingCache] = useState(false);
@@ -39,12 +41,17 @@ export default function SettingsModal({ open, onClose }: Props) {
     if (currentSource?.kind === "url") {
       setTab("url");
       setUrl(currentSource.value);
+      setBaseUrl(currentSource.baseUrl ?? "");
     } else if (currentSource?.kind === "text") {
       setTab("text");
       setText(currentSource.value);
+      setBaseUrl(currentSource.baseUrl ?? "");
     } else if (defaultUrl) {
       setTab("url");
       setUrl(defaultUrl);
+      // 初回プリセット流入時にテキスト/ファイルモードへ切替えても、URL モードと
+      // 同じ Tailscale ホストを base として使えるよう defaultUrl を初期値に
+      setBaseUrl(defaultUrl);
     }
   }, [open, currentSource, defaultUrl]);
 
@@ -75,7 +82,11 @@ export default function SettingsModal({ open, onClose }: Props) {
       return;
     }
     try {
-      await setSource({ kind: "text", value: text });
+      await setSource({
+        kind: "text",
+        value: text,
+        baseUrl: baseUrl.trim() || undefined,
+      });
       onClose();
     } catch {
       /* */
@@ -87,7 +98,11 @@ export default function SettingsModal({ open, onClose }: Props) {
     try {
       const buf = await file.text();
       setText(buf);
-      await setSource({ kind: "text", value: buf });
+      await setSource({
+        kind: "text",
+        value: buf,
+        baseUrl: baseUrl.trim() || undefined,
+      });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -220,8 +235,9 @@ export default function SettingsModal({ open, onClose }: Props) {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-id=&quot;...&quot; group-title=&quot;GR&quot;,チャンネル名&#10;http://..."
-                className="w-full h-44 bg-slate-950 border border-slate-700 rounded-md px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500 font-mono resize-none"
+                className="w-full h-36 bg-slate-950 border border-slate-700 rounded-md px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500 font-mono resize-none"
               />
+              <BaseUrlField value={baseUrl} onChange={setBaseUrl} presets={presets} />
             </div>
           )}
 
@@ -232,7 +248,7 @@ export default function SettingsModal({ open, onClose }: Props) {
               </label>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-slate-700 hover:border-cyan-500/60 rounded-lg py-12 flex flex-col items-center gap-2 text-slate-400 hover:text-cyan-300 transition-colors"
+                className="w-full border-2 border-dashed border-slate-700 hover:border-cyan-500/60 rounded-lg py-8 flex flex-col items-center gap-2 text-slate-400 hover:text-cyan-300 transition-colors"
               >
                 <Upload size={28} />
                 <span className="text-sm">クリックしてファイルを選択</span>
@@ -248,6 +264,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                   if (f) handleFile(f);
                 }}
               />
+              <BaseUrlField value={baseUrl} onChange={setBaseUrl} presets={presets} />
             </div>
           )}
 
@@ -327,6 +344,53 @@ export default function SettingsModal({ open, onClose }: Props) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function BaseUrlField({
+  value,
+  onChange,
+  presets,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  presets: { name: string; url: string }[];
+}) {
+  return (
+    <div className="mt-3">
+      <label className="block text-xs text-slate-400 mb-1.5">
+        Base URL <span className="text-slate-600">(任意 / Mirakurun の m3u 内 http:// を https:// に書き換える基準)</span>
+      </label>
+      <div className="flex gap-2">
+        {presets.length > 0 && (
+          <select
+            value={presets.find((p) => p.url === value)?.url ?? ""}
+            onChange={(e) => {
+              if (e.target.value) onChange(e.target.value);
+            }}
+            className="shrink-0 max-w-[40%] bg-slate-950 border border-slate-700 rounded-md px-2 py-2 text-xs text-slate-300 outline-none focus:border-cyan-500"
+            title="プリセットから選択"
+          >
+            <option value="">— プリセット —</option>
+            {presets.map((p) => (
+              <option key={p.url} value={p.url}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <input
+          type="url"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://your-host/api/iptv/playlist"
+          className="flex-1 bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500 font-mono"
+        />
+      </div>
+      <p className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
+        m3u 内のチャンネル URL のうち、ここで指定した URL と <strong>同じホスト名</strong> のものは scheme/port をこの URL に合わせて書き換えます。空欄ならテキストのまま使用。
+      </p>
     </div>
   );
 }

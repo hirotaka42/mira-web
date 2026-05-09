@@ -24,6 +24,14 @@ export interface M3uSource {
   kind: M3uSourceKind;
   value: string;
   fetchedAt?: number;
+  /**
+   * テキスト貼り付け / ファイルアップロード時にチャンネル URL の scheme/host を
+   * 揃えるための base URL。Mirakurun が生成する m3u は内部的に http:// を埋める
+   * ため、HTTPS ページから読むと mixed-content でブロックされる。ここを指定
+   * すると同一 hostname の URL を base の scheme に書き換える (URL モードでは
+   * fetch した URL が自動的に base になるので不要)。
+   */
+  baseUrl?: string;
 }
 
 export interface PlaybackStats {
