@@ -45,23 +45,60 @@ interface NavigatorWithGPU extends Navigator {
   };
 }
 
+/**
+ * iOS / iPadOS 上の WebKit 系ブラウザを検出する。
+ * iOS では Safari/Chrome/Edge いずれも内部は WebKit のため、
+ * WebGPU は Feature Flag が必要 + WebCodecs は MPEG-2 を復号できないため
+ * このアプリは現状動作しない。
+ */
+function detectAppleMobileWebKit(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  // iPhone / iPod
+  if (/iPhone|iPod/i.test(ua)) return true;
+  // iPad (iPadOS 13+ は Mac UA を返す → "iPad" or maxTouchPoints で検出)
+  if (/iPad/i.test(ua)) return true;
+  if (
+    /Macintosh/i.test(ua) &&
+    typeof navigator.maxTouchPoints === "number" &&
+    navigator.maxTouchPoints > 1
+  ) {
+    return true;
+  }
+  return false;
+}
+
 async function initWasmModule(): Promise<TsLiveModule> {
   const nav = navigator as NavigatorWithGPU;
+
   if (!nav.gpu) {
-    throw new Error("このブラウザは WebGPU に対応していません");
+    if (detectAppleMobileWebKit()) {
+      throw new Error(
+        "iOS / iPadOS 上では現状ご利用いただけません。WebGPU が Feature Flag " +
+          "なため、有効化しても WebCodecs が MPEG-2 video の復号に対応せず再生不可です。" +
+          "Mac の Chrome / Edge / Safari からアクセスしてください。"
+      );
+    }
+    throw new Error(
+      "このブラウザは WebGPU に対応していません (Chrome / Edge 113+ もしくは macOS Safari 18+ をお試しください)"
+    );
   }
   if (typeof SharedArrayBuffer === "undefined") {
-    throw new Error("SharedArrayBuffer が無効です (Cross-Origin Isolation 未設定)");
+    throw new Error(
+      "SharedArrayBuffer が利用できません (Cross-Origin Isolation 未成立)。ハードリロードを試してください"
+    );
   }
   if (typeof (globalThis as Record<string, unknown>).VideoDecoder === "undefined") {
     throw new Error("このブラウザは WebCodecs に対応していません");
   }
   await loadTsLiveScript();
   const adapter = await nav.gpu.requestAdapter();
-  if (!adapter) throw new Error("WebGPU アダプターが取得できません");
+  if (!adapter) {
+    throw new Error("WebGPU アダプターが取得できません (GPU ドライバ非対応の可能性)");
+  }
   const device = await adapter.requestDevice();
   if (!window.createWasmModule) {
-    throw new Error("ts-live.js が初期化されていません");
+    throw new Error("ts-live.js の初期化に失敗しました");
   }
   const mod = await window.createWasmModule({ preinitializedWebGPUDevice: device });
   return mod;

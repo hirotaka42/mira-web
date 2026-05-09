@@ -14,9 +14,23 @@ Static browser-only Mirakurun IPTV viewer — WASM (ts-live.js) decoding, m3u st
 
 ## ブラウザ要件
 
-- **Chrome / Edge 113+** または **Safari 18+**
-- WebGPU / WebCodecs / SharedArrayBuffer 対応必須
-- Firefox は WebGPU が experimental flag のためデフォルトでは不可
+ts-live.js が **WebGPU + WebCodecs + SharedArrayBuffer** に依存し、かつ日本の地上波が **MPEG-2 video** で配信されるため、対応ブラウザは限定的です。
+
+| プラットフォーム | ブラウザ | 動作 |
+|---|---|---|
+| **macOS / Windows / Linux** | Chrome / Edge 113+ | ✅ 動作確認済 |
+| **macOS** | Safari 18+ | ✅ 想定動作 |
+| **iOS / iPadOS** | Safari / Chrome / Edge / Firefox | ❌ **動作しません** (詳細下記) |
+| 全プラットフォーム | Firefox stable | ❌ WebGPU が experimental flag のため不可 |
+
+### iOS / iPadOS が使えない理由
+
+- iOS 上のブラウザは **すべて WebKit ベース** (Apple 規約によりレンダリングエンジンの差替不可)
+- WebGPU は iOS 18 / iPadOS 18 以降で Feature Flag を有効化すれば動作するが…
+- **WebCodecs の VideoDecoder が MPEG-2 video を復号できない** ため、ts-live.js のパイプラインが完成しない
+- 結果として地上波 (MPEG-2) を含むストリームは現状再生できません
+
+将来的に WebKit が MPEG-2 を WebCodecs でサポートするか、ブラウザ側で WASM 完結型 codec を組めるようになれば動作する可能性があります。
 
 ## ホスティング側要件
 
