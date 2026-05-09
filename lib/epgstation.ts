@@ -28,6 +28,28 @@ export function isEpgstationChannelsUrl(url: URL): boolean {
   return /\/api\/channels\/?$/.test(url.pathname);
 }
 
+/**
+ * 任意の値が EPGStation の channels JSON 配列っぽいか判定。
+ * テキスト貼付/ファイルアップロード時に m3u か EPGStation JSON かを切り分けるのに使う。
+ *
+ * 緩く判定する: 空配列なら false、先頭要素が { id: number } を持っていれば true。
+ * (Mirakurun の serviceの JSON も id を持つが、Mirakurun の `/api/services` 等は
+ *  そのまま静的視聴用にできない別物なのでここでは EPGStation 用と扱う。)
+ */
+export function looksLikeEpgstationChannels(arr: unknown[]): boolean {
+  if (arr.length === 0) return false;
+  const first = arr[0];
+  if (!first || typeof first !== "object") return false;
+  const obj = first as Record<string, unknown>;
+  if (typeof obj.id !== "number") return false;
+  // name または halfWidthName または channel 何かは通常入っている
+  return (
+    typeof obj.name === "string" ||
+    typeof obj.halfWidthName === "string" ||
+    typeof obj.channel === "string"
+  );
+}
+
 const GROUP_RANK: Record<string, number> = { GR: 0, BS: 1, CS: 2, SKY: 3 };
 
 /**

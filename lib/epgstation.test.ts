@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildHlsM3u,
   isEpgstationChannelsUrl,
+  looksLikeEpgstationChannels,
   type EpgstationChannel,
 } from "./epgstation";
 import { parseM3u } from "./m3u";
@@ -102,5 +103,42 @@ describe("buildHlsM3u", () => {
     const m3u = buildHlsM3u(ch, baseUrl);
     expect(m3u).toContain(",Half\n");
     expect(m3u).toContain(",ch-2\n");
+  });
+});
+
+describe("looksLikeEpgstationChannels", () => {
+  it("EPGStation の channels JSON は true", () => {
+    const sample = [
+      { id: 400211, name: "ＢＳ１１", channelType: "BS", channel: "BS-211" },
+    ];
+    expect(looksLikeEpgstationChannels(sample)).toBe(true);
+  });
+
+  it("空配列は false", () => {
+    expect(looksLikeEpgstationChannels([])).toBe(false);
+  });
+
+  it("プリミティブ配列は false", () => {
+    expect(looksLikeEpgstationChannels([1, 2, 3])).toBe(false);
+    expect(looksLikeEpgstationChannels(["a", "b"])).toBe(false);
+  });
+
+  it("id が string なら false", () => {
+    expect(looksLikeEpgstationChannels([{ id: "x", name: "A" }])).toBe(false);
+  });
+
+  it("name/halfWidthName/channel が無いなら false", () => {
+    expect(looksLikeEpgstationChannels([{ id: 1 }])).toBe(false);
+  });
+
+  it("halfWidthName のみでも true (一部 EPGStation バージョンで起こる)", () => {
+    expect(
+      looksLikeEpgstationChannels([{ id: 1, halfWidthName: "X" }])
+    ).toBe(true);
+  });
+
+  it("null/undefined 要素は false", () => {
+    expect(looksLikeEpgstationChannels([null])).toBe(false);
+    expect(looksLikeEpgstationChannels([undefined])).toBe(false);
   });
 });

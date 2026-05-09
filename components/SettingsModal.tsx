@@ -229,12 +229,12 @@ export default function SettingsModal({ open, onClose }: Props) {
           {tab === "text" && (
             <div>
               <label className="block text-xs text-slate-400 mb-2">
-                m3u テキスト貼付
+                m3u テキスト or EPGStation の /api/channels JSON 貼付
               </label>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-id=&quot;...&quot; group-title=&quot;GR&quot;,チャンネル名&#10;http://..."
+                placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-id=&quot;...&quot;,チャンネル名&#10;http://...&#10;&#10;または&#10;[{&quot;id&quot;:..., &quot;name&quot;:&quot;...&quot;, &quot;channelType&quot;:&quot;GR&quot;}, ...]"
                 className="w-full h-36 bg-slate-950 border border-slate-700 rounded-md px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500 font-mono resize-none"
               />
               <BaseUrlField value={baseUrl} onChange={setBaseUrl} presets={presets} />
@@ -244,7 +244,7 @@ export default function SettingsModal({ open, onClose }: Props) {
           {tab === "file" && (
             <div>
               <label className="block text-xs text-slate-400 mb-2">
-                ローカルの .m3u ファイルを選択
+                .m3u / .m3u8 / EPGStation の channels JSON ファイルを選択
               </label>
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -252,12 +252,12 @@ export default function SettingsModal({ open, onClose }: Props) {
               >
                 <Upload size={28} />
                 <span className="text-sm">クリックしてファイルを選択</span>
-                <span className="text-xs text-slate-600">.m3u / .m3u8</span>
+                <span className="text-xs text-slate-600">.m3u / .m3u8 / .json</span>
               </button>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".m3u,.m3u8,audio/x-mpegurl,application/x-mpegurl,text/plain"
+                accept=".m3u,.m3u8,.json,audio/x-mpegurl,application/x-mpegurl,application/json,text/plain"
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -360,7 +360,7 @@ function BaseUrlField({
   return (
     <div className="mt-3">
       <label className="block text-xs text-slate-400 mb-1.5">
-        Base URL <span className="text-slate-600">(任意 / Mirakurun の m3u 内 http:// を https:// に書き換える基準)</span>
+        Base URL <span className="text-slate-600">(Mirakurun: 任意 / EPGStation JSON: 必須)</span>
       </label>
       <div className="flex gap-2">
         {presets.length > 0 && (
@@ -389,7 +389,8 @@ function BaseUrlField({
         />
       </div>
       <p className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
-        m3u 内のチャンネル URL のうち、ここで指定した URL と <strong>同じホスト名</strong> のものは scheme/port をこの URL に合わせて書き換えます。空欄ならテキストのまま使用。
+        m3u の場合: 同じ hostname の URL を base の scheme/port に書き換え (Mirakurun の http:// を https:// に揃えるため)。
+        EPGStation の channels JSON の場合: HLS 起動 URL を組み立てる origin として使用 (必須)。
       </p>
     </div>
   );

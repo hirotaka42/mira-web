@@ -8,6 +8,7 @@ import { buildFetchInit, mixedContentWarning, validateUrl } from "./safeFetch";
 import {
   buildHlsM3u,
   isEpgstationChannelsUrl,
+  looksLikeEpgstationChannels,
   type EpgstationChannel,
 } from "./epgstation";
 
@@ -49,6 +50,31 @@ async function loadFromSource(
         // 不正な base URL は無視 (rewrite 無し動作にフォールバック)
       }
     }
+
+    // EPGStation の /api/channels が返す JSON を貼付/アップロードしたケースを検出。
+    // m3u ではないので parseM3u を通すと 0 件になる。HLS 起動 RPC URL を組み立てる
+    // のに origin が必須なので baseUrl 無しでは扱えない。
+    const trimmed = src.value.trimStart();
+    if (trimmed.startsWith("[")) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(src.value);
+      } catch {
+        parsed = null;
+      }
+      if (Array.isArray(parsed) && looksLikeEpgstationChannels(parsed)) {
+        if (!baseUrl) {
+          throw new Error(
+            "EPGStation の channels JSON を検出しましたが、HLS 起動 URL を組み立てる Base URL が必要です。Base URL 欄に EPGStation の URL (例: https://your-epgstation/api/channels) を入れてください。"
+          );
+        }
+        return {
+          text: buildHlsM3u(parsed as EpgstationChannel[], baseUrl),
+          baseUrl,
+        };
+      }
+    }
+
     return { text: src.value, baseUrl };
   }
 
