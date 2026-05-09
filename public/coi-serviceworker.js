@@ -29,10 +29,28 @@
 
     self.addEventListener("fetch", (event) => {
       const request = event.request;
+
       // only-if-cached の cross-origin はそのまま (Chrome の制約)
       if (request.cache === "only-if-cached" && request.mode !== "same-origin") {
         return;
       }
+
+      // ★ 重要: cross-origin fetch は intercept しない。理由:
+      // 1) Chrome の Local Network Access (LNA) はユーザー許可プロンプトが必要だが、
+      //    SW コンテキスト内の fetch では UI が出せず即拒否される。
+      // 2) 同一オリジン (HTML/JS/WASM) に COOP/COEP/CORP を付与できれば
+      //    crossOriginIsolated は成立する。cross-origin の応答は
+      //    CORP ヘッダ (Mirakurun は `cross-origin` を返す) で COEP を満たす。
+      let requestUrl;
+      try {
+        requestUrl = new URL(request.url);
+      } catch {
+        return; // 不正な URL は素通し
+      }
+      if (requestUrl.origin !== self.location.origin) {
+        return; // ブラウザのネイティブ fetch に任せる
+      }
+
       event.respondWith(
         fetch(request)
           .then((response) => {
@@ -40,11 +58,7 @@
             const headers = new Headers(response.headers);
             headers.set("Cross-Origin-Embedder-Policy", "require-corp");
             headers.set("Cross-Origin-Opener-Policy", "same-origin");
-            // 静的アセット (同一オリジン) には CORP も付ける
-            if (
-              new URL(request.url).origin === self.location.origin &&
-              !headers.has("Cross-Origin-Resource-Policy")
-            ) {
+            if (!headers.has("Cross-Origin-Resource-Policy")) {
               headers.set("Cross-Origin-Resource-Policy", "same-origin");
             }
             return new Response(response.body, {
@@ -54,8 +68,11 @@
             });
           })
           .catch((err) => {
-            console.error("[coi-sw] fetch failed", err);
-            return new Response("", { status: 502, statusText: "fetch failed" });
+            console.error("[coi-sw] same-origin fetch failed", err);
+            // ここで 502 を返すと「サーバが 502 を返した」ように見えるので
+            // 元のエラーを再現する: undefined を返すと event.respondWith が
+            // 失敗してデフォルト動作 (ネットワーク失敗) になる
+            throw err;
           })
       );
     });
