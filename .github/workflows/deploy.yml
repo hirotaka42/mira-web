@@ -41,6 +41,10 @@ jobs:
           # プロジェクトサイトの場合はサブパスが /<repo>/ になる。
           # ユーザーサイト (<user>.github.io) や CNAME 利用時は空文字に上書きすること。
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+          # 既定の m3u プレイリスト URL。リポジトリ Variables の
+          # `DEFAULT_PLAYLIST_URL` に設定されていればプリフィル + 自動読み込み。
+          # 未設定なら通常通り設定モーダルが開く。
+          NEXT_PUBLIC_DEFAULT_PLAYLIST_URL: ${{ vars.DEFAULT_PLAYLIST_URL }}
         run: npm run build
 
       - name: Add .nojekyll

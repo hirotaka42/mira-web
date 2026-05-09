@@ -25,6 +25,9 @@ export default function SettingsModal({ open, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // build-time に CI から注入された既定 URL (空文字なら未設定)
+  const defaultUrl = process.env.NEXT_PUBLIC_DEFAULT_PLAYLIST_URL ?? "";
+
   useEffect(() => {
     if (!open) return;
     setError(null);
@@ -34,8 +37,12 @@ export default function SettingsModal({ open, onClose }: Props) {
     } else if (currentSource?.kind === "text") {
       setTab("text");
       setText(currentSource.value);
+    } else if (defaultUrl) {
+      // 永続化された source も無し、build-time 既定 URL があればプリフィル
+      setTab("url");
+      setUrl(defaultUrl);
     }
-  }, [open, currentSource]);
+  }, [open, currentSource, defaultUrl]);
 
   useEffect(() => {
     setError(storeError);

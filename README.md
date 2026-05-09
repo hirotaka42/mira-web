@@ -71,6 +71,20 @@ npm run dev
 
 - **ユーザーサイト** (`<user>.github.io` 直下にデプロイ) や **カスタムドメイン (CNAME)** を使う場合は、`NEXT_PUBLIC_BASE_PATH` を空文字に変更してください
 
+### m3u プレイリスト URL のプリセット (任意)
+
+GitHub の **Settings → Secrets and variables → Actions → Variables** で
+`DEFAULT_PLAYLIST_URL` という名前の **Variable** を作って値に
+`https://<your-mirakurun-host>/api/iptv/playlist` を入れると、デプロイ時に
+`NEXT_PUBLIC_DEFAULT_PLAYLIST_URL` として埋め込まれます。動作:
+
+- 永続化された設定がない初回アクセス時、自動で読み込み
+- 設定モーダルの URL タブにプリフィル
+
+> Tailscale など private network 経由でしか到達しないホストならば、URL 自体は
+> 公開しても実害はないため Variable で問題ありません。public exposed な
+> Mirakurun の URL は Variable に置かないでください。
+
 ## セキュリティ
 
 - 設定 (m3u URL / 貼付けテキスト / 選択チャンネル) はブラウザの `localStorage` にのみ保存。リモートに送られない
