@@ -82,7 +82,14 @@
 
   // ============== Page scope (registration) ==============
   if (typeof window === "undefined") return;
-  if (window.crossOriginIsolated) return; // 既に isolated → 何もしない
+
+  const RELOAD_FLAG = "__coi_sw_reloaded__";
+
+  if (window.crossOriginIsolated) {
+    // 成功状態 — 次回失敗時に再度 1 回だけリロードできるようにフラグをクリア
+    try { window.sessionStorage.removeItem(RELOAD_FLAG); } catch {}
+    return;
+  }
   if (!window.isSecureContext) {
     console.warn("[coi-sw] Not a secure context — SW registration skipped.");
     return;
@@ -90,6 +97,21 @@
   if (!("serviceWorker" in navigator)) {
     console.warn("[coi-sw] Service Workers unavailable — SharedArrayBuffer disabled.");
     return;
+  }
+
+  // 1 セッションで 1 回までのリロードに制限 (無限ループ防止)
+  function reloadOnce() {
+    try {
+      if (window.sessionStorage.getItem(RELOAD_FLAG)) {
+        console.warn(
+          "[coi-sw] crossOriginIsolated could not be enabled after one reload. " +
+          "Check Network tab for missing COOP/COEP headers."
+        );
+        return;
+      }
+      window.sessionStorage.setItem(RELOAD_FLAG, String(Date.now()));
+    } catch {}
+    window.location.reload();
   }
 
   const scriptEl = document.currentScript;
@@ -103,13 +125,13 @@
         if (!sw) return;
         sw.addEventListener("statechange", () => {
           if (sw.state === "activated" && !window.crossOriginIsolated) {
-            window.location.reload();
+            reloadOnce();
           }
         });
       });
       // 既に active で controller が無い → 1 回だけリロードして isolated 化
       if (reg.active && !navigator.serviceWorker.controller) {
-        window.location.reload();
+        reloadOnce();
       }
     })
     .catch((err) => {
