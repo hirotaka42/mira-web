@@ -23,8 +23,11 @@ interface State {
   clear: () => void;
 }
 
-async function loadFromSource(src: M3uSource): Promise<string> {
-  if (src.kind === "text") return src.value;
+/** m3u 取得結果 + scheme リライト用の base URL を一緒に返す */
+async function loadFromSource(
+  src: M3uSource
+): Promise<{ text: string; baseUrl?: URL }> {
+  if (src.kind === "text") return { text: src.value };
 
   // 静的サイトなのでブラウザから直接 Mirakurun を叩く。
   // Mirakurun 側で allowOrigins にこのオリジンを追加してもらう必要あり。
@@ -36,7 +39,7 @@ async function loadFromSource(src: M3uSource): Promise<string> {
   if (!res.ok) {
     throw new Error(`m3u 取得失敗 (${res.status} ${res.statusText})`);
   }
-  return await res.text();
+  return { text: await res.text(), baseUrl: url };
 }
 
 export const useStore = create<State>()(
@@ -53,8 +56,10 @@ export const useStore = create<State>()(
       setSource: async (src) => {
         set({ loading: true, error: null });
         try {
-          const text = await loadFromSource(src);
-          const channels = parseM3u(text);
+          const { text, baseUrl } = await loadFromSource(src);
+          // baseUrl が与えられた場合は同一ホストのチャンネル URL を base の
+          // scheme (https 等) にリライト → mixed-content 回避
+          const channels = parseM3u(text, baseUrl);
           if (channels.length === 0) {
             throw new Error("チャンネルが見つかりませんでした (m3u 形式を確認してください)");
           }

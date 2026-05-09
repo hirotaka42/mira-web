@@ -12,10 +12,29 @@ function parseAttrs(s: string): Record<string, string> {
   return out;
 }
 
-export function parseM3u(text: string): Channel[] {
+/**
+ * m3u を Channel[] にパースする。
+ *
+ * @param text       m3u 全文
+ * @param baseUrl    プレイリストを取得した URL。指定するとチャンネル URL を
+ *                   その scheme/host にリライトする (Mirakurun は `req.protocol`
+ *                   を使って m3u 内 URL を生成するため、リバースプロキシ越しでは
+ *                   常に `http://` になってしまう。HTTPS の page から取得した
+ *                   ときは scheme を揃えないと mixed-content でブロックされる)。
+ */
+export function parseM3u(text: string, baseUrl?: string | URL): Channel[] {
   const lines = text.split(/\r?\n/);
   const channels: Channel[] = [];
   let pending: { name: string; attrs: Record<string, string> } | null = null;
+
+  let base: URL | null = null;
+  if (baseUrl) {
+    try {
+      base = baseUrl instanceof URL ? baseUrl : new URL(baseUrl);
+    } catch {
+      base = null;
+    }
+  }
 
   for (const raw of lines) {
     const line = raw.trim();
@@ -33,7 +52,7 @@ export function parseM3u(text: string): Channel[] {
     if (line.startsWith("#")) continue;
 
     if (pending) {
-      const url = line;
+      const url = base ? rewriteUrl(line, base) : line;
       const id = pending.attrs["tvg-id"] || extractIdFromUrl(url) || url;
       channels.push({
         id,
@@ -48,6 +67,30 @@ export function parseM3u(text: string): Channel[] {
   }
 
   return channels;
+}
+
+/**
+ * m3u 内の URL を base URL の scheme/host に揃える。
+ *   - 同一 hostname (= base と同じサーバ) のときだけ scheme/host をリライト
+ *   - 別ホスト (CDN など) はそのまま
+ *   - 不正な URL ならそのまま
+ */
+function rewriteUrl(url: string, base: URL): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  if (parsed.hostname !== base.hostname) return url;
+  // 同一ホスト → scheme/host/port を base のものに揃える。
+  // pathname/search/hash は元 URL のものを保持。
+  // (URL.host や URL.protocol セッターには順序依存の罠があるので、
+  //  pathname を base に対して相対解決する方が確実)
+  return new URL(
+    parsed.pathname + parsed.search + parsed.hash,
+    base.origin + "/"
+  ).toString();
 }
 
 function extractIdFromUrl(url: string): string | null {

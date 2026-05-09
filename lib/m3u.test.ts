@@ -89,6 +89,59 @@ http://x/3
   });
 });
 
+describe("parseM3u (URL rewriting with baseUrl)", () => {
+  const text = `#EXTM3U
+#EXTINF:-1 tvg-id="1" group-title="GR",CH1
+http://example.com:40772/api/services/1/stream
+#EXTINF:-1 tvg-id="2" group-title="GR",CH2
+http://other.cdn.com/services/2/stream
+`;
+
+  it("baseUrl が無いときは何もしない (後方互換)", () => {
+    const ch = parseM3u(text);
+    expect(ch[0].url).toBe("http://example.com:40772/api/services/1/stream");
+    expect(ch[1].url).toBe("http://other.cdn.com/services/2/stream");
+  });
+
+  it("baseUrl が https で同一ホストなら scheme と host(port含) を揃える", () => {
+    const ch = parseM3u(text, "https://example.com/api/iptv/playlist");
+    expect(ch[0].url).toBe("https://example.com/api/services/1/stream");
+    // 別ホストには触らない
+    expect(ch[1].url).toBe("http://other.cdn.com/services/2/stream");
+  });
+
+  it("baseUrl が同一ホスト・同一 scheme なら実質変化なし", () => {
+    const ch = parseM3u(text, "http://example.com:40772/api/iptv/playlist");
+    expect(ch[0].url).toBe("http://example.com:40772/api/services/1/stream");
+  });
+
+  it("不正な baseUrl は無視 (リライトしない)", () => {
+    const ch = parseM3u(text, "not a url");
+    expect(ch[0].url).toBe("http://example.com:40772/api/services/1/stream");
+  });
+
+  it("URL オブジェクトでも文字列でも受け付ける", () => {
+    const ch1 = parseM3u(text, new URL("https://example.com/api/iptv/playlist"));
+    const ch2 = parseM3u(text, "https://example.com/api/iptv/playlist");
+    expect(ch1[0].url).toBe(ch2[0].url);
+  });
+
+  it("Mirakurun 越し Tailscale Serve の実シナリオ (port 違い)", () => {
+    // 取得 URL は https の 443 (port なし)、m3u 内 URL は :40772 が直リン → リライト後は port 揃う
+    const realText = `#EXTM3U
+#EXTINF:-1 tvg-id="3273601024" group-title="GR",NHK
+http://mirakurun-zimablade01.tail411f6c.ts.net/api/services/3273601024/stream
+`;
+    const ch = parseM3u(
+      realText,
+      "https://mirakurun-zimablade01.tail411f6c.ts.net/api/iptv/playlist"
+    );
+    expect(ch[0].url).toBe(
+      "https://mirakurun-zimablade01.tail411f6c.ts.net/api/services/3273601024/stream"
+    );
+  });
+});
+
 describe("groupChannels", () => {
   it("group ごとに分類する", () => {
     const channels = parseM3u(MIRAKURUN_SAMPLE);
