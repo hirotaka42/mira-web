@@ -99,6 +99,22 @@
     return;
   }
 
+  // ★ WebGPU が無い環境 (iPhone Safari など) では SAB を必要とする ts-live.js
+  //   が使えないので COI 自体不要。COI を有効化すると COEP=require-corp が
+  //   全 fetch に適用され、iOS Safari の cross-origin fetch を巻き込んで
+  //   失敗させるケースがあるため、登録ごとスキップする。
+  //   (HLS ネイティブ再生は SAB 不要なのでこれで十分)
+  if (!("gpu" in navigator)) {
+    // 既に登録済の SW がいれば一掃 (古い COI が居座って fetch を壊すケース対策)
+    if (navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => Promise.all(regs.map((r) => r.unregister().catch(() => false))))
+        .catch(() => {});
+    }
+    return;
+  }
+
   // 1 セッションで 1 回までのリロードに制限 (無限ループ防止)
   function reloadOnce() {
     try {
