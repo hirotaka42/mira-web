@@ -48,6 +48,9 @@ jobs:
         run: touch out/.nojekyll
 
       - uses: actions/configure-pages@v5
+        with:
+          # 初回 push で Pages 未有効でも自動で source=GitHub Actions に設定する
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v4
         with:
