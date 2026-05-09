@@ -143,7 +143,8 @@ export default function EpgPanel({ channel }: Props) {
         <div className="text-xs text-slate-500">
           {err}
           <span className="block text-[11px] text-slate-600 mt-1">
-            EPGStation の <code className="text-slate-500">/api/schedules/broadcasting</code> から取得しています。Mirakurun 直モードの場合は EPGStation 側のチャンネル一覧に存在する必要があります。
+            番組情報は EPGStation の <code className="text-slate-500">/api/schedules/broadcasting</code> から取得しています。
+            Mirakurun 直モード時はプリセット (Variable) に EPGStation の URL が登録されていれば自動でそちらを参照します。
           </span>
         </div>
       ) : (

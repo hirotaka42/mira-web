@@ -1,19 +1,18 @@
 /**
  * 現在放送中の番組情報を取得するヘルパー。
  *
- * 主に EPGStation の `/api/schedules/broadcasting?isHalfWidth=true` を利用する。
- * Mirakurun 直モードのチャンネルでも、同じ Tailnet に EPGStation があれば
- * channelId で問い合わせできる (番組情報は EPGStation の DB に蓄積される)。
- *
- * 設計の割り切り:
- *   - チャンネルの URL の origin から EPG をホストするサーバを推定する。
- *     EPGStation HLS URL → そのまま EPGStation
- *     Mirakurun URL     → そのまま Mirakurun (programs API)
- *   - Mirakurun の programs API は今のところ常に空が返ってくるケースもあり、
- *     その場合は番組情報なしとして扱う (panel 側でプレースホルダ)。
+ * **EPG の唯一のソースは EPGStation** とする (Mirakurun は TS 配信専用)。
+ *   - エンドポイント: `/api/schedules/broadcasting?isHalfWidth=true`
+ *   - origin の決定:
+ *     - epgstation-hls チャンネル → channel.url の origin (= EPGStation 自身)
+ *     - mirakurun-mpegts チャンネル → PLAYLIST_PRESETS から
+ *       EPGStation の URL を自動検出して使う (presets.getEpgstationOrigin)
+ *   - EPGStation の URL がプリセットに無ければ EPG は取れず null を返す
+ *     (パネル側でプレースホルダ表示)。
  */
 
 import { buildFetchInit, validateUrl } from "./safeFetch";
+import { getEpgstationOrigin } from "./presets";
 import type { Channel } from "./types";
 
 export interface CurrentProgram {
@@ -44,9 +43,25 @@ interface EpgstationBroadcastingItem {
 }
 
 /**
- * channel.url の origin (EPGStation でも Mirakurun でも) に対して
- * EPGStation の `/api/schedules/broadcasting` を叩く。EPGStation でない場合は
- * 404 になり null を返す。
+ * EPG 取得用の EPGStation origin を決定する。
+ *   - epgstation-hls チャンネル → channel.url の origin
+ *   - mirakurun-mpegts チャンネル → PLAYLIST_PRESETS から自動検出
+ */
+function resolveEpgOrigin(channel: Channel): string | null {
+  if (channel.kind === "epgstation-hls") {
+    try {
+      return validateUrl(channel.url).url.origin;
+    } catch {
+      return null;
+    }
+  }
+  // Mirakurun mode: presets から EPGStation を探す
+  return getEpgstationOrigin();
+}
+
+/**
+ * EPGStation の `/api/schedules/broadcasting?isHalfWidth=true` を叩いて
+ * 該当 channelId の現在番組を返す。EPGStation の URL が分からなければ null。
  */
 export async function fetchCurrentProgram(
   channel: Channel,
@@ -55,13 +70,10 @@ export async function fetchCurrentProgram(
   const channelIdNum = Number(channel.id);
   if (!Number.isFinite(channelIdNum)) return null;
 
-  let parsed;
-  try {
-    parsed = validateUrl(channel.url);
-  } catch {
-    return null;
-  }
-  const broadcastingUrl = `${parsed.url.origin}/api/schedules/broadcasting?isHalfWidth=true`;
+  const origin = resolveEpgOrigin(channel);
+  if (!origin) return null;
+
+  const broadcastingUrl = `${origin}/api/schedules/broadcasting?isHalfWidth=true`;
 
   let res: Response;
   try {
@@ -74,7 +86,6 @@ export async function fetchCurrentProgram(
   const items: EpgstationBroadcastingItem[] = await res.json().catch(() => []);
   if (!Array.isArray(items)) return null;
 
-  // 該当 channelId の最初の番組
   const match = items.find((it) => it.channel?.id === channelIdNum);
   const prog = match?.programs?.[0];
   if (!prog) return null;

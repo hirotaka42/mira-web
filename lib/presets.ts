@@ -60,3 +60,33 @@ export function getDefaultPresetUrl(): string {
   const presets = getPlaylistPresets();
   return presets[0]?.url ?? "";
 }
+
+/**
+ * 番組情報 (EPG) の取得元として使う EPGStation の origin を、プリセット URL の
+ * パターンから自動検出する。
+ *
+ * 検出ロジック:
+ *   - URL pathname が `/api/channels` / `/api/streams/live/...` / `/api/iptv/channel.m3u8`
+ *     のいずれかにマッチすれば EPGStation 由来と判定 → その origin を返す
+ *   - 該当が無ければ null
+ *
+ * これで Mirakurun 直モードのチャンネルでも、PLAYLIST_PRESETS に EPGStation の
+ * URL が登録されていれば EPG をそちらから取得できる。
+ */
+export function getEpgstationOrigin(): string | null {
+  for (const p of getPlaylistPresets()) {
+    try {
+      const u = new URL(p.url);
+      if (
+        /\/api\/channels\/?$/.test(u.pathname) ||
+        /\/api\/streams\/live\//.test(u.pathname) ||
+        /\/api\/iptv\/channel\.m3u8$/.test(u.pathname)
+      ) {
+        return u.origin;
+      }
+    } catch {
+      /* invalid url, skip */
+    }
+  }
+  return null;
+}
