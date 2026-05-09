@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupChannels, parseM3u } from "./m3u";
+import { detectChannelKind, groupChannels, parseM3u } from "./m3u";
 
 const MIRAKURUN_SAMPLE = `# Mirakurun IPTV プレイリスト
 #EXTM3U url-tvg="http://example.com:40772/api/iptv/xmltv"
@@ -21,6 +21,7 @@ describe("parseM3u", () => {
       name: "ＮＨＫ総合１・東京",
       group: "GR",
       url: "http://example.com:40772/api/services/3273601024/stream",
+      kind: "mirakurun-mpegts",
       tvgId: "3273601024",
       logo: undefined,
     });
@@ -30,6 +31,7 @@ describe("parseM3u", () => {
       name: "ＮＨＫ ＢＳ",
       group: "BS",
       url: "http://example.com:40772/api/services/400101/stream",
+      kind: "mirakurun-mpegts",
       tvgId: "400101",
       logo: "http://example.com/logo.png",
     });
@@ -139,6 +141,53 @@ http://mirakurun-zimablade01.tail411f6c.ts.net/api/services/3273601024/stream
     expect(ch[0].url).toBe(
       "https://mirakurun-zimablade01.tail411f6c.ts.net/api/services/3273601024/stream"
     );
+  });
+});
+
+describe("detectChannelKind", () => {
+  it("EPGStation の HLS 起動 RPC URL は epgstation-hls", () => {
+    expect(
+      detectChannelKind("http://epg:8888/api/streams/live/3273601024/hls?mode=0")
+    ).toBe("epgstation-hls");
+    expect(
+      detectChannelKind("https://epg.example.com/api/streams/live/100/hls")
+    ).toBe("epgstation-hls");
+  });
+
+  it("Mirakurun のストリーム URL は mirakurun-mpegts", () => {
+    expect(
+      detectChannelKind("http://mirakurun:40772/api/services/3273601024/stream")
+    ).toBe("mirakurun-mpegts");
+  });
+
+  it("EPGStation の m2ts URL も mirakurun-mpegts (同じ生 TS なので)", () => {
+    expect(
+      detectChannelKind("http://epg:8888/api/streams/live/100/m2ts?mode=0")
+    ).toBe("mirakurun-mpegts");
+  });
+
+  it("HLS 録画 URL は今回対象外なので mirakurun-mpegts (誤検出しない)", () => {
+    expect(
+      detectChannelKind("http://epg:8888/api/streams/recorded/123/hls")
+    ).toBe("mirakurun-mpegts");
+  });
+
+  it("不明な URL は mirakurun-mpegts (デフォルト)", () => {
+    expect(detectChannelKind("http://example.com/foo")).toBe("mirakurun-mpegts");
+  });
+});
+
+describe("parseM3u (kind detection)", () => {
+  it("URL ごとに kind が正しく付く", () => {
+    const text = `#EXTM3U
+#EXTINF:-1 tvg-id="1" group-title="GR",MIRA
+http://m:40772/api/services/1/stream
+#EXTINF:-1 tvg-id="2" group-title="GR",EPG
+http://e:8888/api/streams/live/2/hls?mode=0
+`;
+    const ch = parseM3u(text);
+    expect(ch[0].kind).toBe("mirakurun-mpegts");
+    expect(ch[1].kind).toBe("epgstation-hls");
   });
 });
 

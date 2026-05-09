@@ -1,4 +1,16 @@
-import type { Channel } from "./types";
+import type { Channel, ChannelKind } from "./types";
+
+/**
+ * URL から再生方式を推定する。
+ *   - `/api/streams/live/{ch}/hls` → EPGStation の HLS 起動 RPC
+ *   - その他 (Mirakurun の `/api/services/{id}/stream` 等) → 生 MPEG-TS
+ */
+export function detectChannelKind(url: string): ChannelKind {
+  if (/\/api\/streams\/live\/[^/]+\/hls(\?|$)/i.test(url)) {
+    return "epgstation-hls";
+  }
+  return "mirakurun-mpegts";
+}
 
 const EXTINF_RE = /^#EXTINF:-?\d+(?:\.\d+)?(.*?),(.*)$/;
 const ATTR_RE = /([\w-]+)="([^"]*)"/g;
@@ -59,6 +71,7 @@ export function parseM3u(text: string, baseUrl?: string | URL): Channel[] {
         name: pending.name,
         group: pending.attrs["group-title"] || "OTHER",
         url,
+        kind: detectChannelKind(url),
         tvgId: pending.attrs["tvg-id"],
         logo: pending.attrs["tvg-logo"],
       });

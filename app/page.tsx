@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import TopBar from "@/components/TopBar";
 import Sidebar from "@/components/Sidebar";
-import Player from "@/components/TsLivePlayer";
+import TsLivePlayer from "@/components/TsLivePlayer";
+import HlsPlayer from "@/components/HlsPlayer";
 import EpgPanel from "@/components/EpgPanel";
 import StatsPanel from "@/components/StatsPanel";
 import SettingsModal from "@/components/SettingsModal";
@@ -50,7 +51,11 @@ export default function Page() {
         <Sidebar />
 
         <main className="flex-1 overflow-y-auto p-4 bg-slate-900">
-          <Player channel={selected} onStats={handleStats} />
+          {selected?.kind === "epgstation-hls" ? (
+            <HlsPlayer channel={selected} onStats={handleStats} />
+          ) : (
+            <TsLivePlayer channel={selected} onStats={handleStats} />
+          )}
           <div className="mt-4 grid gap-3 grid-cols-1 lg:grid-cols-2">
             <EpgPanel channel={selected} />
             <StatsPanel channel={selected} stats={stats} />
