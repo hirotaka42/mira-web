@@ -26,7 +26,7 @@ export default function TopBar({ onOpenSettings }: Props) {
 
       <div className="text-sm font-semibold text-cyan-400 tracking-wide flex items-center gap-2">
         <span aria-hidden>▣</span>
-        Mirakurun WebUI
+        Mira WebUI
       </div>
 
       <div className="flex-1 flex items-center text-sm text-slate-200 min-w-0">

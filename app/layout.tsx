@@ -16,8 +16,9 @@ const geistMono = Geist_Mono({
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export const metadata: Metadata = {
-  title: "mira-web",
-  description: "Static browser-only Mirakurun IPTV viewer",
+  title: "Mira WebUI",
+  description:
+    "Mira WebUI — a static, browser-only IPTV viewer for Mirakurun / EPGStation",
 };
 
 export default function RootLayout({
