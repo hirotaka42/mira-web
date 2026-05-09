@@ -192,9 +192,10 @@ export default function HlsPlayer({ channel, onStats }: Props) {
         if (canPlayNativeHls()) {
           // Safari (macOS / iOS) はネイティブ HLS
           video.src = m3u8Url;
-          video.muted = true;
+          // muted は強制せず、ブラウザの autoplay policy に任せる:
+          //   desktop は通常そのまま再生、iOS は controls の play ボタンで手動開始
           video.play().catch(() => {
-            /* autoplay 失敗時はユーザーが controls から手動再生 */
+            /* autoplay 制限時 (主に iOS) はユーザーが controls から手動再生 */
           });
         } else {
           // それ以外 (Chrome / Edge / Firefox 等) は hls.js
@@ -210,9 +211,8 @@ export default function HlsPlayer({ channel, onStats }: Props) {
           hls.loadSource(m3u8Url);
           hls.attachMedia(video);
           hls.on(HlsCtor.Events.MANIFEST_PARSED, () => {
-            video.muted = true;
             video.play().catch(() => {
-              /* autoplay 制限時は手動再生 */
+              /* autoplay 制限時はユーザーが controls から手動再生 */
             });
           });
           hls.on(HlsCtor.Events.ERROR, (_event, data) => {
@@ -318,7 +318,6 @@ export default function HlsPlayer({ channel, onStats }: Props) {
         controls
         autoPlay
         playsInline
-        muted
       />
       {loading && !error && (
         <div className="absolute top-3 right-3 px-3 py-1.5 rounded-md bg-black/70 backdrop-blur text-cyan-400 text-xs border border-cyan-500/30 animate-pulse pointer-events-none max-w-[80%] truncate">
