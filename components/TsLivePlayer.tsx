@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Maximize, Minimize } from "lucide-react";
 import type { Channel, PlaybackStats } from "@/lib/types";
 import type { TsLiveModule, TsLiveStats } from "@/types/ts-live";
 import { buildFetchInit, mixedContentWarning, validateUrl } from "@/lib/safeFetch";
+
+interface ElementWithWebkitFullscreen extends Element {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+}
+interface DocumentWithWebkitFullscreen extends Document {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+}
 
 /**
  * Mirakurun の生 MPEG-TS をブラウザ内で復号するプレイヤー。
@@ -130,14 +139,49 @@ export default function TsLivePlayer({
   muted = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const moduleRef = useRef<TsLiveModule | null>(null);
   const onStatsRef = useRef(onStats);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     onStatsRef.current = onStats;
   }, [onStats]);
+
+  // フルスクリーン状態の追跡 (ESC キー / OS UI ボタンで抜けたときも同期)
+  useEffect(() => {
+    const sync = () => {
+      const docFs = document.fullscreenElement
+        ?? (document as DocumentWithWebkitFullscreen).webkitFullscreenElement;
+      setIsFullscreen(!!docFs && docFs === containerRef.current);
+    };
+    document.addEventListener("fullscreenchange", sync);
+    document.addEventListener("webkitfullscreenchange", sync);
+    return () => {
+      document.removeEventListener("fullscreenchange", sync);
+      document.removeEventListener("webkitfullscreenchange", sync);
+    };
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    const el = containerRef.current as ElementWithWebkitFullscreen | null;
+    if (!el) return;
+    const doc = document as DocumentWithWebkitFullscreen;
+    const current = document.fullscreenElement ?? doc.webkitFullscreenElement;
+    try {
+      if (current) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
+      } else {
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+      }
+    } catch {
+      /* user キャンセル等、無視 */
+    }
+  }, []);
 
   // 音量 / ミュート同期
   useEffect(() => {
@@ -302,7 +346,12 @@ export default function TsLivePlayer({
   }
 
   return (
-    <div className="relative aspect-video w-full rounded-lg bg-black overflow-hidden shadow-2xl shadow-black/50">
+    <div
+      ref={containerRef}
+      className={`relative w-full bg-black overflow-hidden shadow-2xl shadow-black/50 ${
+        isFullscreen ? "h-full" : "aspect-video rounded-lg"
+      }`}
+    >
       <canvas
         ref={canvasRef}
         id="video"
@@ -330,6 +379,21 @@ export default function TsLivePlayer({
         <span className="text-emerald-400 mr-2">●</span>
         {channel.name}
       </div>
+      {/*
+        フルスクリーン トグル — TS モードは <canvas> なのでブラウザ組み込みの
+        全画面ボタンが無い。コンテナ div ごと requestFullscreen して全画面化。
+      */}
+      {!error && (
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className="absolute bottom-3 right-3 w-9 h-9 rounded-md flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 text-slate-200 hover:bg-black/80 hover:text-cyan-300 transition-colors"
+          aria-label={isFullscreen ? "全画面を解除" : "全画面表示"}
+          title={isFullscreen ? "全画面を解除 (Esc)" : "全画面表示"}
+        >
+          {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+        </button>
+      )}
     </div>
   );
 }
