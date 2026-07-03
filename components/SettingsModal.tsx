@@ -6,6 +6,8 @@ import { useStore } from "@/lib/store";
 import { getDefaultPresetUrl, getPlaylistPresets } from "@/lib/presets";
 import { clearAllAppCaches } from "@/lib/cacheReset";
 import type { ExternalPlayerKind } from "@/lib/externalPlayer";
+import type { M2tsModeInfo } from "@/lib/epgstationConfig";
+import { epgstationOrigin, fetchM2tsModes } from "@/lib/epgstationConfig";
 
 interface Props {
   open: boolean;
@@ -18,7 +20,8 @@ export default function SettingsModal({ open, onClose }: Props) {
   const setSource = useStore((s) => s.setSource);
   const clear = useStore((s) => s.clear);
   const currentSource = useStore((s) => s.source);
-  const channelCount = useStore((s) => s.channels.length);
+  const channels = useStore((s) => s.channels);
+  const channelCount = channels.length;
   const showSubChannels = useStore((s) => s.showSubChannels);
   const setShowSubChannels = useStore((s) => s.setShowSubChannels);
   const externalPlayer = useStore((s) => s.externalPlayer);
@@ -40,6 +43,7 @@ export default function SettingsModal({ open, onClose }: Props) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const urlInputRef = useRef<HTMLInputElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [m2tsModes, setM2tsModes] = useState<M2tsModeInfo[] | null>(null);
 
   // build-time に CI から注入されるプリセット (任意 / 0..N)
   const presets = useMemo(() => getPlaylistPresets(), []);
@@ -68,6 +72,26 @@ export default function SettingsModal({ open, onClose }: Props) {
   useEffect(() => {
     setError(storeError);
   }, [storeError]);
+
+  // m2ts モード一覧を EPGStation から取得
+  useEffect(() => {
+    if (!open) return;
+    const origin = epgstationOrigin(channels);
+    if (!origin) {
+      setM2tsModes(null);
+      return;
+    }
+    let cancelled = false;
+    fetchM2tsModes(origin).then((modes) => {
+      if (cancelled) return;
+      setM2tsModes(modes);
+      if (modes && externalM2tsMode >= modes.length) {
+        setExternalM2tsMode(0);
+      }
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, channels]);
 
   // Esc で閉じる
   useEffect(() => {
@@ -372,14 +396,21 @@ export default function SettingsModal({ open, onClose }: Props) {
                 onChange={(e) => setExternalM2tsMode(Number(e.target.value))}
                 className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-500"
               >
-                {[0, 1, 2, 3].map((n) => (
-                  <option key={n} value={n}>mode {n}</option>
-                ))}
+                {m2tsModes
+                  ? m2tsModes.map((m, i) => (
+                      <option key={i} value={i}>
+                        {i}: {m.name}
+                      </option>
+                    ))
+                  : [0, 1, 2, 3].map((n) => (
+                      <option key={n} value={n}>mode {n}</option>
+                    ))}
               </select>
               <p className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
-                スマホ・タブレットで「アプリで開く」を押したときに使うアプリ。mode
-                番号は EPGStation の config（stream.live.ts.m2ts）の並び順に対応（例:
-                0=720p, 1=480p, 2=無変換）。Android では VLC（intent）を使用します。
+                {m2tsModes
+                  ? "EPGStation から取得した画質プリセット（m2ts）。「アプリで開く」の画質に使われます。"
+                  : "スマホ・タブレットで「アプリで開く」を押したときに使うアプリ。mode 番号は EPGStation の config（stream.live.ts.m2ts）の並び順に対応（例: 0=720p, 1=480p, 2=無変換）。"}
+                {" "}Android では VLC（intent）を使用します。
               </p>
             </div>
           </div>
