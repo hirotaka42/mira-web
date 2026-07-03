@@ -113,7 +113,7 @@ export default function HlsPlayer({ channel, onStats }: Props) {
       // ① ストリーム起動 RPC
       let info: StartStreamInfo;
       try {
-        const res = await fetch(parsed.url.toString(), buildFetchInit(parsed.url, ac.signal));
+        const res = await fetch(parsed.url.toString(), buildFetchInit(parsed.url));
         if (!res.ok) throw new Error(`stream start ${res.status} ${res.statusText}`);
         info = await res.json();
       } catch (e) {
@@ -128,8 +128,16 @@ export default function HlsPlayer({ channel, onStats }: Props) {
         setLoading(false);
         return;
       }
-      if (cancelled) return;
       streamId = info.streamId;
+      if (cancelled) {
+        fetch(`${baseOrigin}/api/streams/${streamId}`, {
+          method: "DELETE",
+          keepalive: true,
+          mode: "cors",
+          credentials: "omit",
+        }).catch(() => { /* best-effort */ });
+        return;
+      }
 
       // ② keepalive を即時開始 (これが無いとサーバ側でストリームが自動停止される)
       const startKeep = (sid: number) => {
@@ -182,6 +190,18 @@ export default function HlsPlayer({ channel, onStats }: Props) {
       if (!ready) {
         setError("HLS ストリームの起動がタイムアウトしました (60秒以上 isEnable に到達せず)");
         setLoading(false);
+        if (keepTimer) {
+          clearInterval(keepTimer);
+          keepTimer = null;
+        }
+        if (streamId != null && baseOrigin) {
+          fetch(`${baseOrigin}/api/streams/${streamId}`, {
+            method: "DELETE",
+            keepalive: true,
+            mode: "cors",
+            credentials: "omit",
+          }).catch(() => { /* best-effort */ });
+        }
         return;
       }
 
@@ -234,6 +254,18 @@ export default function HlsPlayer({ channel, onStats }: Props) {
           hls.on(HlsCtor.Events.ERROR, (_event, data) => {
             if (data.fatal) {
               setError(`HLS エラー: ${data.type} / ${data.details}`);
+              if (keepTimer) {
+                clearInterval(keepTimer);
+                keepTimer = null;
+              }
+              if (streamId != null && baseOrigin) {
+                fetch(`${baseOrigin}/api/streams/${streamId}`, {
+                  method: "DELETE",
+                  keepalive: true,
+                  mode: "cors",
+                  credentials: "omit",
+                }).catch(() => { /* best-effort */ });
+              }
             }
           });
         }
@@ -319,9 +351,23 @@ export default function HlsPlayer({ channel, onStats }: Props) {
         } catch {}
       }, 2000);
 
+      // pagehide: タブ閉じ・PWA スワイプ終了時にストリームを解放
+      const onPageHide = () => {
+        if (streamId != null && baseOrigin) {
+          fetch(`${baseOrigin}/api/streams/${streamId}`, {
+            method: "DELETE",
+            keepalive: true,
+            mode: "cors",
+            credentials: "omit",
+          }).catch(() => { /* best-effort */ });
+        }
+      };
+      window.addEventListener("pagehide", onPageHide);
+
       finalCleanupRef.current = () => {
         try { video.removeEventListener("loadedmetadata", onLoadedMeta); } catch {}
         try { video.removeEventListener("resize", reportResolution); } catch {}
+        try { window.removeEventListener("pagehide", onPageHide); } catch {}
         clearInterval(statsTimer);
         if (perfObserver) {
           try { perfObserver.disconnect(); } catch {}
@@ -354,7 +400,7 @@ export default function HlsPlayer({ channel, onStats }: Props) {
       // サーバ側ストリーム停止 (チューナー解放)
       if (streamId != null && baseOrigin) {
         const stopUrl = `${baseOrigin}/api/streams/${streamId}`;
-        fetch(stopUrl, { method: "DELETE", mode: "cors", credentials: "omit" }).catch(
+        fetch(stopUrl, { method: "DELETE", keepalive: true, mode: "cors", credentials: "omit" }).catch(
           () => {
             /* best-effort */
           }
