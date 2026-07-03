@@ -31,6 +31,7 @@ interface State {
   toggleSidebar: () => void;
   setShowSubChannels: (v: boolean) => void;
   selectChannel: (id: string) => void;
+  deselect: () => void;
   reload: () => Promise<void>;
   clear: () => void;
 }
@@ -153,6 +154,7 @@ export const useStore = create<State>()(
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setShowSubChannels: (v) => set({ showSubChannels: v }),
       selectChannel: (id) => set({ selectedId: id }),
+      deselect: () => set({ selectedId: null }),
 
       reload: async () => {
         const src = get().source;

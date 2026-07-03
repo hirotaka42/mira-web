@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type Hls from "hls.js";
 import type { Channel, PlaybackStats } from "@/lib/types";
 import { buildFetchInit, mixedContentWarning, validateUrl } from "@/lib/safeFetch";
+import { useStore } from "@/lib/store";
+import PlayerErrorOverlay from "./PlayerErrorOverlay";
 
 /**
  * EPGStation の HLS ライブストリームを再生するプレイヤー。
@@ -53,19 +55,39 @@ function canPlayNativeHls(): boolean {
 interface Props {
   channel: Channel | null;
   onStats?: (stats: PlaybackStats) => void;
+  muted?: boolean;
 }
 
-export default function HlsPlayer({ channel, onStats }: Props) {
+export default function HlsPlayer({ channel, onStats, muted }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const onStatsRef = useRef(onStats);
   const finalCleanupRef = useRef<(() => void) | null>(null);
+  const deselect = useStore((s) => s.deselect);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [waitingMessage, setWaitingMessage] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [elapsedSec, setElapsedSec] = useState(0);
 
   useEffect(() => {
     onStatsRef.current = onStats;
   }, [onStats]);
+
+  // muted 同期
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = !!muted;
+  }, [muted]);
+
+  // 経過秒タイマー
+  useEffect(() => {
+    if (!loading) {
+      setElapsedSec(0);
+      return;
+    }
+    setElapsedSec(0);
+    const t = setInterval(() => setElapsedSec((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [loading]);
 
   useEffect(() => {
     if (!channel) {
@@ -351,6 +373,18 @@ export default function HlsPlayer({ channel, onStats }: Props) {
         } catch {}
       }, 2000);
 
+      // フルスクリーン: CustomEvent 経由でトグル
+      const onToggleFs = () => {
+        try {
+          if (video.requestFullscreen) {
+            video.requestFullscreen().catch(() => {});
+          } else if ((video as unknown as Record<string, unknown>).webkitEnterFullscreen) {
+            (video as unknown as Record<string, CallableFunction>).webkitEnterFullscreen();
+          }
+        } catch { /* not supported */ }
+      };
+      window.addEventListener("mira:toggle-fullscreen", onToggleFs);
+
       // pagehide: タブ閉じ・PWA スワイプ終了時にストリームを解放
       const onPageHide = () => {
         if (streamId != null && baseOrigin) {
@@ -368,6 +402,7 @@ export default function HlsPlayer({ channel, onStats }: Props) {
         try { video.removeEventListener("loadedmetadata", onLoadedMeta); } catch {}
         try { video.removeEventListener("resize", reportResolution); } catch {}
         try { window.removeEventListener("pagehide", onPageHide); } catch {}
+        try { window.removeEventListener("mira:toggle-fullscreen", onToggleFs); } catch {}
         clearInterval(statsTimer);
         if (perfObserver) {
           try { perfObserver.disconnect(); } catch {}
@@ -408,7 +443,7 @@ export default function HlsPlayer({ channel, onStats }: Props) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel?.id, channel?.url]);
+  }, [channel?.id, channel?.url, retryNonce]);
 
   if (!channel) {
     return (
@@ -432,19 +467,31 @@ export default function HlsPlayer({ channel, onStats }: Props) {
         playsInline
       />
       {loading && !error && (
-        <div className="absolute top-3 right-3 px-3 py-1.5 rounded-md bg-black/70 backdrop-blur text-cyan-400 text-xs border border-cyan-500/30 animate-pulse pointer-events-none max-w-[80%] truncate">
-          {waitingMessage ?? "読み込み中…"} {channel.name}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-10">
+          <div className="text-center px-6 py-5 rounded-xl bg-black/80 backdrop-blur border border-slate-700 max-w-xs">
+            <div aria-live="polite" className="text-cyan-400 text-sm mb-1 animate-pulse">
+              {waitingMessage ?? "読み込み中…"}
+            </div>
+            <div className="text-slate-400 text-xs mb-3">{channel.name}</div>
+            <div aria-hidden className="text-slate-500 text-xs mb-3">
+              ({elapsedSec} 秒 / 最大 60 秒)
+            </div>
+            <button
+              type="button"
+              onClick={deselect}
+              className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-600 hover:border-slate-400 rounded-md transition-colors"
+            >
+              キャンセル
+            </button>
+          </div>
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/85 p-6 z-10">
-          <div className="max-w-md text-center">
-            <div className="text-red-400 text-sm font-mono mb-2 break-all">{error}</div>
-            <div className="text-slate-500 text-xs">
-              EPGStation 側で CORS / HTTPS / トランスコード設定が必要です
-            </div>
-          </div>
-        </div>
+        <PlayerErrorOverlay
+          error={error}
+          hint="EPGStation 側で CORS / HTTPS / トランスコード設定が必要です"
+          onRetry={() => setRetryNonce((n) => n + 1)}
+        />
       )}
       <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded bg-black/60 backdrop-blur-sm text-xs text-slate-200 border border-white/5 pointer-events-none">
         <span className="text-emerald-400 mr-2">●</span>

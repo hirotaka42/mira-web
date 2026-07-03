@@ -5,6 +5,7 @@ import { Maximize, Minimize } from "lucide-react";
 import type { Channel, PlaybackStats } from "@/lib/types";
 import type { TsLiveModule, TsLiveStats } from "@/types/ts-live";
 import { buildFetchInit, mixedContentWarning, validateUrl } from "@/lib/safeFetch";
+import PlayerErrorOverlay from "./PlayerErrorOverlay";
 
 interface ElementWithWebkitFullscreen extends Element {
   webkitRequestFullscreen?: () => Promise<void> | void;
@@ -145,6 +146,7 @@ export default function TsLivePlayer({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     onStatsRef.current = onStats;
@@ -182,6 +184,13 @@ export default function TsLivePlayer({
       /* user キャンセル等、無視 */
     }
   }, []);
+
+  // mira:toggle-fullscreen CustomEvent からもフルスクリーン切替
+  useEffect(() => {
+    const handler = () => { toggleFullscreen(); };
+    window.addEventListener("mira:toggle-fullscreen", handler);
+    return () => window.removeEventListener("mira:toggle-fullscreen", handler);
+  }, [toggleFullscreen]);
 
   // 音量 / ミュート同期
   useEffect(() => {
@@ -331,7 +340,7 @@ export default function TsLivePlayer({
         } catch {}
       }
     };
-  }, [channel?.id, channel?.url]);
+  }, [channel?.id, channel?.url, retryNonce]);
   /* eslint-disable-line react-hooks/exhaustive-deps */
 
   if (!channel) {
@@ -360,20 +369,19 @@ export default function TsLivePlayer({
         className="absolute inset-0 w-full h-full object-contain"
       />
       {loading && !error && (
-        <div className="absolute top-3 right-3 px-3 py-1.5 rounded-md bg-black/70 backdrop-blur text-cyan-400 text-xs border border-cyan-500/30 animate-pulse pointer-events-none">
+        <div aria-live="polite" className="absolute top-3 right-3 px-3 py-1.5 rounded-md bg-black/70 backdrop-blur text-cyan-400 text-xs border border-cyan-500/30 animate-pulse pointer-events-none">
           読み込み中… {channel.name}
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/85 p-6 z-10">
-          <div className="max-w-md text-center">
-            <div className="text-red-400 text-sm font-mono mb-2 break-all">{error}</div>
-            <div className="text-slate-500 text-xs">
-              要件: WebGPU + WebCodecs + SharedArrayBuffer 対応ブラウザ
-              (Chrome / Edge 113+ または Safari 18+)
-            </div>
-          </div>
-        </div>
+        <PlayerErrorOverlay
+          error={error}
+          hint="要件: WebGPU + WebCodecs + SharedArrayBuffer 対応ブラウザ (Chrome / Edge 113+ または Safari 18+)"
+          onRetry={() => {
+            modulePromise = null;
+            setRetryNonce((n) => n + 1);
+          }}
+        />
       )}
       <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded bg-black/60 backdrop-blur-sm text-xs text-slate-200 border border-white/5 pointer-events-none">
         <span className="text-emerald-400 mr-2">●</span>
