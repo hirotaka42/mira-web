@@ -9,6 +9,7 @@ import EpgPanel from "@/components/EpgPanel";
 import StatsPanel from "@/components/StatsPanel";
 import SettingsModal from "@/components/SettingsModal";
 import GlobalHotkeys from "@/components/GlobalHotkeys";
+import ExternalPlayerButton from "@/components/ExternalPlayerButton";
 import { useStore, useSelectedChannel } from "@/lib/store";
 import type { PlaybackStats } from "@/lib/types";
 
@@ -72,6 +73,9 @@ export default function Page() {
           ) : (
             <TsLivePlayer channel={selected} onStats={handleStats} muted={muted} />
           )}
+          <div className="mt-2 flex justify-end">
+            <ExternalPlayerButton channel={selected} />
+          </div>
           <div className="mt-4 grid gap-3 grid-cols-1 lg:grid-cols-2">
             <EpgPanel channel={selected} />
             <StatsPanel channel={selected} stats={stats} />
