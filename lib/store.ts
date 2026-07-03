@@ -17,6 +17,7 @@ interface State {
   channels: Channel[];
   selectedId: string | null;
   sidebarCollapsed: boolean;
+  showSubChannels: boolean;
   search: string;
   loading: boolean;
   error: string | null;
@@ -28,6 +29,7 @@ interface State {
   setSource: (src: M3uSource) => Promise<void>;
   setSearch: (s: string) => void;
   toggleSidebar: () => void;
+  setShowSubChannels: (v: boolean) => void;
   selectChannel: (id: string) => void;
   reload: () => Promise<void>;
   clear: () => void;
@@ -110,6 +112,7 @@ export const useStore = create<State>()(
       channels: [],
       selectedId: null,
       sidebarCollapsed: false,
+      showSubChannels: false,
       search: "",
       loading: false,
       error: null,
@@ -148,6 +151,7 @@ export const useStore = create<State>()(
 
       setSearch: (s) => set({ search: s }),
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      setShowSubChannels: (v) => set({ showSubChannels: v }),
       selectChannel: (id) => set({ selectedId: id }),
 
       reload: async () => {
@@ -170,6 +174,7 @@ export const useStore = create<State>()(
         source: s.source,
         selectedId: s.selectedId,
         sidebarCollapsed: s.sidebarCollapsed,
+        showSubChannels: s.showSubChannels,
       }),
       // localStorage から restore 完了を待ってから初回 UI 判断するためのフラグ。
       // SSG/Static Export で稀にあるレース (useEffect が hydrate より早く走る) を防ぐ。

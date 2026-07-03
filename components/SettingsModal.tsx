@@ -18,6 +18,8 @@ export default function SettingsModal({ open, onClose }: Props) {
   const clear = useStore((s) => s.clear);
   const currentSource = useStore((s) => s.source);
   const channelCount = useStore((s) => s.channels.length);
+  const showSubChannels = useStore((s) => s.showSubChannels);
+  const setShowSubChannels = useStore((s) => s.setShowSubChannels);
   const storeError = useStore((s) => s.error);
   const loading = useStore((s) => s.loading);
 
@@ -273,6 +275,23 @@ export default function SettingsModal({ open, onClose }: Props) {
               {error}
             </div>
           )}
+        </div>
+
+        <div className="px-5 pb-4">
+          <div className="border-t border-slate-700 pt-4">
+            <label className="flex items-center gap-2.5 text-sm text-slate-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showSubChannels}
+                onChange={(e) => setShowSubChannels(e.target.checked)}
+                className="w-4 h-4 accent-cyan-500"
+              />
+              サブチャンネルを表示
+            </label>
+            <p className="mt-1.5 ml-[26px] text-[11px] text-slate-500 leading-relaxed">
+              地デジのマルチ編成 (例: NHK総合2) を一覧に表示します。オフのときはメインチャンネルのみ表示。
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-700 bg-slate-900/60 gap-3 flex-wrap">

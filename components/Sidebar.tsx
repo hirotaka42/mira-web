@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Search, Tv, Satellite, Radio } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { groupChannels } from "@/lib/m3u";
+import { filterSubChannels } from "@/lib/subchannel";
 import type { Channel } from "@/lib/types";
 
 const GROUP_ICON: Record<string, typeof Tv> = {
@@ -22,15 +23,17 @@ export default function Sidebar() {
   const channels = useStore((s) => s.channels);
   const search = useStore((s) => s.search);
   const setSearch = useStore((s) => s.setSearch);
+  const showSubChannels = useStore((s) => s.showSubChannels);
   const collapsed = useStore((s) => s.sidebarCollapsed);
   const selectedId = useStore((s) => s.selectedId);
   const selectChannel = useStore((s) => s.selectChannel);
 
   const filtered = useMemo(() => {
+    const base = showSubChannels ? channels : filterSubChannels(channels);
     const q = search.trim().toLowerCase();
-    if (!q) return channels;
-    return channels.filter((c) => c.name.toLowerCase().includes(q));
-  }, [channels, search]);
+    if (!q) return base;
+    return base.filter((c) => c.name.toLowerCase().includes(q));
+  }, [channels, search, showSubChannels]);
 
   const grouped = useMemo(() => groupChannels(filtered), [filtered]);
 
