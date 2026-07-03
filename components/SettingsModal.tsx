@@ -5,6 +5,7 @@ import { ClipboardPaste, Eraser, Link2, Trash2, Type, Upload, X } from "lucide-r
 import { useStore } from "@/lib/store";
 import { getDefaultPresetUrl, getPlaylistPresets } from "@/lib/presets";
 import { clearAllAppCaches } from "@/lib/cacheReset";
+import type { ExternalPlayerKind } from "@/lib/externalPlayer";
 
 interface Props {
   open: boolean;
@@ -20,6 +21,10 @@ export default function SettingsModal({ open, onClose }: Props) {
   const channelCount = useStore((s) => s.channels.length);
   const showSubChannels = useStore((s) => s.showSubChannels);
   const setShowSubChannels = useStore((s) => s.setShowSubChannels);
+  const externalPlayer = useStore((s) => s.externalPlayer);
+  const setExternalPlayer = useStore((s) => s.setExternalPlayer);
+  const externalM2tsMode = useStore((s) => s.externalM2tsMode);
+  const setExternalM2tsMode = useStore((s) => s.setExternalM2tsMode);
   const storeError = useStore((s) => s.error);
   const loading = useStore((s) => s.loading);
 
@@ -340,6 +345,43 @@ export default function SettingsModal({ open, onClose }: Props) {
             <p className="mt-1.5 ml-[26px] text-[11px] text-slate-500 leading-relaxed">
               地デジのマルチ編成 (例: NHK総合2) を一覧に表示します。オフのときはメインチャンネルのみ表示。
             </p>
+
+            <div className="mt-4 pt-4 border-t border-slate-700/50">
+              <div className="text-xs text-slate-400 mb-2">外部プレイヤー</div>
+              <div className="flex gap-1 mb-3">
+                {(["infuse", "vlc"] as ExternalPlayerKind[]).map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => setExternalPlayer(kind)}
+                    className={`flex-1 px-3 py-1.5 text-xs rounded-md border transition-colors ${
+                      externalPlayer === kind
+                        ? "bg-cyan-600/20 border-cyan-500 text-cyan-400"
+                        : "border-slate-700 text-slate-400 hover:border-slate-500"
+                    }`}
+                  >
+                    {kind === "infuse" ? "Infuse（既定）" : "VLC"}
+                  </button>
+                ))}
+              </div>
+              <label className="block text-xs text-slate-400 mb-1.5">
+                EPGStation 画質モード (m2ts mode)
+              </label>
+              <select
+                value={externalM2tsMode}
+                onChange={(e) => setExternalM2tsMode(Number(e.target.value))}
+                className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-500"
+              >
+                {[0, 1, 2, 3].map((n) => (
+                  <option key={n} value={n}>mode {n}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
+                スマホ・タブレットで「アプリで開く」を押したときに使うアプリ。mode
+                番号は EPGStation の config（stream.live.ts.m2ts）の並び順に対応（例:
+                0=720p, 1=480p, 2=無変換）。Android では VLC（intent）を使用します。
+              </p>
+            </div>
           </div>
         </div>
 
