@@ -2,7 +2,7 @@
 
 ブラウザだけで完結する Mirakurun / EPGStation 用の IPTV プレイヤー。
 
-サーバ側でストリームを処理しないため、GitHub Pages のような完全静的ホスティングにそのままデプロイできます。iOS / iPadOS では「ホーム画面に追加」で全画面 PWA として動作します。
+Mirakurun または EPGStation が動作している環境を前提に、サーバ側でストリームを処理せずブラウザから直接再生します。GitHub Pages のような完全静的ホスティングにそのままデプロイでき、iOS / iPadOS では「ホーム画面に追加」で全画面 PWA として動作します。
 
 ## 特徴
 
@@ -11,7 +11,7 @@
 - **PWA 対応**: iOS / Android / Desktop Chrome でホーム画面から全画面起動
 - **設定はローカル保存のみ**: プレイリストや選択チャンネルはブラウザの `localStorage` にのみ保存
 - **番組情報(EPG)表示**: 現在放送中の番組名・進捗・あらすじを表示
-- **中継サーバなし**: Mirakurun / EPGStation へブラウザから直接通信。Tailscale 等の private network 越しでも動作
+- **中継サーバなし**: Mirakurun / EPGStation へブラウザから直接通信。Tailscale 等のプライベートネットワーク越しでも動作
 
 ## 使い方
 
@@ -25,10 +25,10 @@
 
 | 項目 | 説明 |
 |---|---|
-| URL タブ | m3u または EPGStation `/api/channels` の URL を指定。プリセット登録時はドロップダウンで切替 |
+| URL タブ | m3u または EPGStation `/api/channels` の URL を指定。プリセットが 2 つ以上あるときはドロップダウンで切替 |
 | テキストタブ | m3u や EPGStation の channels JSON を直接貼り付け(JSON は自動検出して変換) |
 | ファイルタブ | `.m3u` / `.m3u8` / `.json` ファイルをアップロード |
-| Base URL | テキスト/ファイル経由時に、m3u 内の `http://` を書き換え、HLS 起動 URL の origin を組み立てる |
+| Base URL | テキスト/ファイル経由時に、m3u 内の `http://` を書き換え、HLS 起動 URL の origin を組み立てる(例: `https://your-epgstation/api/channels`) |
 | サブチャンネルを表示 | 地デジのマルチ編成(例: NHK総合2)を一覧に表示する。既定はオフ(各局のメインチャンネルのみ表示) |
 | キャッシュをクリア | Service Worker と Cache Storage を消去してリロード(プレイリスト設定は維持) |
 | 設定を削除 | localStorage のプレイリスト設定を削除 |
@@ -40,20 +40,20 @@ URL のパターンから自動でモードを判定します。
 | URL パターン | モード | 復号方式 | 対応ブラウザ |
 |---|---|---|---|
 | Mirakurun `/api/iptv/playlist` | TS 直([ts-live.js](https://github.com/kounoike/ts-live)) | WebGPU + WebCodecs + WASM | Chrome / Edge 113+ / macOS Safari 18+(WebGPU 必須) |
-| EPGStation `/api/channels` | HLS | サーバ側 H.264 トランスコード → native HLS / hls.js | iOS / iPadOS Safari, macOS Safari, Chrome / Edge / Firefox |
+| EPGStation `/api/channels` | HLS | サーバ側 H.264 トランスコード → ネイティブ HLS / hls.js | iOS / iPadOS Safari, macOS Safari, Chrome / Edge / Firefox |
 
 - **iOS / iPadOS では HLS モードを使う**: WebKit が WebGPU + MPEG-2 復号を持たないため TS 直モードは使えません
 - EPGStation の HLS 配信は **H.264 + AAC で再エンコード**されている必要があります(`config.yml` の `stream` セクションで `-c:v libx264 -c:a aac` 系を指定)
-- TS 直モードは `SharedArrayBuffer` を使うため Cross-Origin Isolation が必要ですが、同梱の Service Worker(`public/coi-serviceworker.js`)がヘッダを注入するので GitHub Pages でも動作します(WebGPU が無い環境では登録されません)
+- TS 直モードは `SharedArrayBuffer` を使うため Cross-Origin Isolation(クロスオリジン分離)が必要ですが、同梱の Service Worker(`public/coi-serviceworker.js`)がヘッダを注入するので GitHub Pages でも動作します(WebGPU が無い環境では登録されません)
 
 ## サーバ側の準備
 
-ブラウザから直接接続するため、Mirakurun / EPGStation 側に設定が必要です。
+ブラウザから直接接続するため、使う再生モードに応じてサーバ側の設定が必要です。
 
-### Mirakurun
+### Mirakurun(TS 直モード)
 
-1. **HTTPS 化**: Pages は HTTPS のため、`http://` のままだと mixed-content でブロックされます
-   - Tailscale Serve(推奨、tailnet 内のみ): `tailscale serve --bg --https=443 http://localhost:40772`
+1. **HTTPS 化**: Pages は HTTPS のため、`http://` のままだと mixed-content(混合コンテンツ)としてブロックされます
+   - Tailscale Serve(推奨、Tailscale ネットワーク内のみ): `tailscale serve --bg --https=443 http://localhost:40772`
    - Cloudflare Tunnel、またはリバースプロキシ(Caddy 等)+ Let's Encrypt
 2. **`allowOrigins` の追加**(追加後に再起動):
 
@@ -66,11 +66,11 @@ URL のパターンから自動でモードを判定します。
 
 ### EPGStation(HLS モード・EPG パネル使用時)
 
-1. **HTTPS 化**: Mirakurun と同様
+1. **HTTPS 化**: Mirakurun と同様(Tailscale Serve / Cloudflare Tunnel / リバースプロキシ)
 2. **CORS ヘッダ**: EPGStation 自身は CORS を返さないため、Caddy 等のリバースプロキシをサイドカーで立てて
-   `Access-Control-Allow-Origin: *` / `Cross-Origin-Resource-Policy: cross-origin` / `Access-Control-Allow-Private-Network: true` を付与し、OPTIONS(preflight)には 204 + 同ヘッダを返す
+   `Access-Control-Allow-Origin: *` / `Cross-Origin-Resource-Policy: cross-origin` / `Access-Control-Allow-Private-Network: true` を付与し、OPTIONS(preflight = 事前確認リクエスト)には 204 + 同ヘッダを返す
 
-## iPhone で URL モードが失敗する場合
+## トラブルシューティング: iPhone で URL モードが失敗する場合
 
 iPhone Safari は iCloud プライベートリレーや Local Network Access の制約により、URL モードの cross-origin fetch が無音で失敗することがあります(iPad / Mac では発生しません)。その場合は次の手順で回避できます。
 
@@ -86,7 +86,17 @@ Mirakurun の m3u も同じ手順(m3u テキスト貼付 + Base URL に Mirakuru
 - **ストリーム情報パネル**: 解像度・ビットレート・コーデック・バッファ・ドロップを表示
 - **PWA インストール**: iOS Safari は共有ボタン →「ホーム画面に追加」、Android Chrome はメニュー →「ホーム画面に追加」、Desktop Chrome / Edge はアドレスバーのインストールアイコン
 
+## セキュリティ
+
+- 設定(URL / 貼付テキスト / 選択チャンネル)はブラウザの `localStorage` にのみ保存され、リモートへ送信されない
+- すべての fetch は `credentials: "omit"` で発行(Cookie を送らない)
+- ユーザー入力 URL は `http` / `https` のみに制限
+- mixed-content(HTTPS ページからの HTTP fetch)は fetch 前に検出して警告
+- リポジトリに `.m3u` ファイルは含めない(`.gitignore` 済み)
+
 ## 開発
+
+ローカルで開発サーバを起動するには:
 
 ```bash
 npm install
@@ -109,7 +119,8 @@ npm run dev
 3. `https://<user>.github.io/<repo>/` で公開
 
 - **サブパス**: ワークフローが `NEXT_PUBLIC_BASE_PATH=/<repo>` を設定します。ユーザーサイト(`<user>.github.io` 直下)やカスタムドメインでは空文字に上書きしてください
-- **プレイリストのプリセット(任意)**: Settings → Secrets and variables → Actions → Variables の `PLAYLIST_PRESETS` に JSON 配列を設定すると、URL タブの初期値とドロップダウンになります
+- **他の静的ホスト**: `npm run build` で生成される `out/` をそのままアップロードすれば動作します(サブパス配信時は `NEXT_PUBLIC_BASE_PATH` を調整)
+- **プレイリストのプリセット(任意)**: Settings → Secrets and variables → Actions → Variables の `PLAYLIST_PRESETS` に JSON 配列を設定すると URL タブの初期値になります(2 つ以上設定した場合はドロップダウンで切替)
 
   ```json
   [
@@ -121,14 +132,6 @@ npm run dev
   単一 URL だけなら `DEFAULT_PLAYLIST_URL` でも可(`PLAYLIST_PRESETS` 未設定時に使用)。
 
   > プリセット URL はビルド成果物に埋め込まれます。Tailscale 等の private network 経由でしか到達できないホストなら公開しても実害はありませんが、public に露出した Mirakurun / EPGStation の URL は登録しないでください。
-
-## セキュリティ
-
-- 設定(URL / 貼付テキスト / 選択チャンネル)はブラウザの `localStorage` にのみ保存され、リモートへ送信されない
-- すべての fetch は `credentials: "omit"` で発行(Cookie を送らない)
-- ユーザー入力 URL は `http` / `https` のみに制限
-- mixed-content(HTTPS ページからの HTTP fetch)は fetch 前に検出して警告
-- リポジトリに `.m3u` ファイルは含めない(`.gitignore` 済み)
 
 ## 謝辞
 
