@@ -32,17 +32,31 @@ export default function GlobalHotkeys({ disabled, onToggleMute }: Props) {
         state.showSubChannels
       );
 
+      // 選択と同時にフォーカスも新しい行へ移す。クリック等で付いた古い行の
+      // フォーカスリングが置き去りになる(軌跡に見える)のを防ぎ、
+      // 画面外の行へ送ったときは focus() の標準挙動でスクロール追従させる。
+      const selectAndFocus = (id: string) => {
+        state.selectChannel(id);
+        requestAnimationFrame(() => {
+          document
+            .querySelector<HTMLButtonElement>(
+              `[data-channel-id="${CSS.escape(id)}"]`
+            )
+            ?.focus();
+        });
+      };
+
       switch (e.key) {
         case "ArrowDown": {
           e.preventDefault();
           const next = adjacentChannelId(list, state.selectedId, 1);
-          if (next) state.selectChannel(next);
+          if (next) selectAndFocus(next);
           break;
         }
         case "ArrowUp": {
           e.preventDefault();
           const prev = adjacentChannelId(list, state.selectedId, -1);
-          if (prev) state.selectChannel(prev);
+          if (prev) selectAndFocus(prev);
           break;
         }
         case "/": {
