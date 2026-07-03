@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Search, Tv, Satellite, Radio } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { groupChannels } from "@/lib/m3u";
-import { filterSubChannels } from "@/lib/subchannel";
+import { visibleChannels } from "@/lib/channelNav";
 import type { Channel } from "@/lib/types";
 
 const GROUP_ICON: Record<string, typeof Tv> = {
@@ -28,12 +28,10 @@ export default function Sidebar() {
   const selectedId = useStore((s) => s.selectedId);
   const selectChannel = useStore((s) => s.selectChannel);
 
-  const filtered = useMemo(() => {
-    const base = showSubChannels ? channels : filterSubChannels(channels);
-    const q = search.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter((c) => c.name.toLowerCase().includes(q));
-  }, [channels, search, showSubChannels]);
+  const filtered = useMemo(
+    () => visibleChannels(channels, search, showSubChannels),
+    [channels, search, showSubChannels]
+  );
 
   const grouped = useMemo(() => groupChannels(filtered), [filtered]);
 
@@ -106,6 +104,7 @@ export default function Sidebar() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="チャンネル検索…"
+            data-search-input
             className="w-full bg-slate-900 border border-slate-700 rounded-md pl-9 pr-3 py-2 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-cyan-500 transition-colors"
           />
         </div>

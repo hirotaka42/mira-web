@@ -32,6 +32,9 @@ export default function SettingsModal({ open, onClose }: Props) {
   const [pasted, setPasted] = useState(false);
   const [clearingCache, setClearingCache] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const urlInputRef = useRef<HTMLInputElement | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   // build-time に CI から注入されるプリセット (任意 / 0..N)
   const presets = useMemo(() => getPlaylistPresets(), []);
@@ -60,6 +63,29 @@ export default function SettingsModal({ open, onClose }: Props) {
   useEffect(() => {
     setError(storeError);
   }, [storeError]);
+
+  // Esc で閉じる
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.isComposing) return;
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  // オートフォーカス
+  useEffect(() => {
+    if (!open) return;
+    requestAnimationFrame(() => {
+      if (tab === "url" && urlInputRef.current) {
+        urlInputRef.current.focus();
+      } else if (dialogRef.current) {
+        dialogRef.current.focus();
+      }
+    });
+  }, [open, tab]);
 
   if (!open) return null;
 
@@ -138,11 +164,16 @@ export default function SettingsModal({ open, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        tabIndex={-1}
+        className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center px-5 py-3.5 border-b border-slate-700">
-          <h2 className="text-base font-semibold text-slate-100">m3u 設定</h2>
+          <h2 id="settings-title" className="text-base font-semibold text-slate-100">m3u 設定</h2>
           {channelCount > 0 && (
             <span className="ml-3 text-xs text-slate-500">
               現在 {channelCount} ch 登録済み
@@ -199,6 +230,7 @@ export default function SettingsModal({ open, onClose }: Props) {
               </label>
               <div className="flex gap-2">
                 <input
+                  ref={urlInputRef}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://your-host/api/iptv/playlist  または  https://your-host/api/channels"
@@ -250,10 +282,27 @@ export default function SettingsModal({ open, onClose }: Props) {
               </label>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-slate-700 hover:border-cyan-500/60 rounded-lg py-8 flex flex-col items-center gap-2 text-slate-400 hover:text-cyan-300 transition-colors"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  const f = e.dataTransfer.files[0];
+                  if (f) handleFile(f);
+                }}
+                className={`w-full border-2 border-dashed rounded-lg py-8 flex flex-col items-center gap-2 transition-colors ${
+                  dragOver
+                    ? "border-cyan-500 text-cyan-300 bg-cyan-950/20"
+                    : "border-slate-700 hover:border-cyan-500/60 text-slate-400 hover:text-cyan-300"
+                }`}
               >
                 <Upload size={28} />
-                <span className="text-sm">クリックしてファイルを選択</span>
+                <span className="text-sm">
+                  {dragOver ? "ここにドロップ" : "クリックしてファイルを選択"}
+                </span>
                 <span className="text-xs text-slate-600">.m3u / .m3u8 / .json</span>
               </button>
               <input
@@ -271,7 +320,7 @@ export default function SettingsModal({ open, onClose }: Props) {
           )}
 
           {error && (
-            <div className="mt-4 p-3 rounded-md bg-red-950/40 border border-red-900/60 text-red-300 text-xs font-mono">
+            <div role="alert" className="mt-4 p-3 rounded-md bg-red-950/40 border border-red-900/60 text-red-300 text-xs font-mono">
               {error}
             </div>
           )}
