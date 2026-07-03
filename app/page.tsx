@@ -78,7 +78,16 @@ export default function Page() {
           </div>
           {!hasSource && (
             <div className="mt-6 p-6 text-center text-slate-500 text-sm border border-dashed border-slate-700 rounded-lg">
-              右上の <span className="text-cyan-400">設定</span> から m3u を登録してください。
+              <div className="mb-3">
+                m3u を登録するとチャンネルが表示されます。
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-500 text-white rounded-md transition-colors"
+              >
+                設定を開く
+              </button>
             </div>
           )}
           {/*
