@@ -87,7 +87,8 @@ export default function HlsPlayer({ channel, onStats, muted }: Props) {
     setElapsedSec(0);
     const t = setInterval(() => setElapsedSec((s) => s + 1), 1000);
     return () => clearInterval(t);
-  }, [loading]);
+    // ザッピング中は loading が true のまま連続するため、チャンネル変更でも数え直す
+  }, [loading, channel?.id]);
 
   useEffect(() => {
     if (!channel) {
