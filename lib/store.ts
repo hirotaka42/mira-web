@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Channel, M3uSource } from "./types";
+import type { ExternalPlayerKind } from "./externalPlayer";
 import { parseM3u } from "./m3u";
 import { buildFetchInit, mixedContentWarning, validateUrl } from "./safeFetch";
 import {
@@ -18,6 +19,8 @@ interface State {
   selectedId: string | null;
   sidebarCollapsed: boolean;
   showSubChannels: boolean;
+  externalPlayer: ExternalPlayerKind;
+  externalM2tsMode: number;
   search: string;
   loading: boolean;
   error: string | null;
@@ -30,6 +33,8 @@ interface State {
   setSearch: (s: string) => void;
   toggleSidebar: () => void;
   setShowSubChannels: (v: boolean) => void;
+  setExternalPlayer: (v: ExternalPlayerKind) => void;
+  setExternalM2tsMode: (v: number) => void;
   selectChannel: (id: string) => void;
   deselect: () => void;
   reload: () => Promise<void>;
@@ -114,6 +119,8 @@ export const useStore = create<State>()(
       selectedId: null,
       sidebarCollapsed: false,
       showSubChannels: false,
+      externalPlayer: "infuse" as ExternalPlayerKind,
+      externalM2tsMode: 0,
       search: "",
       loading: false,
       error: null,
@@ -153,6 +160,8 @@ export const useStore = create<State>()(
       setSearch: (s) => set({ search: s }),
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setShowSubChannels: (v) => set({ showSubChannels: v }),
+      setExternalPlayer: (v) => set({ externalPlayer: v }),
+      setExternalM2tsMode: (v) => set({ externalM2tsMode: v }),
       selectChannel: (id) => set({ selectedId: id }),
       deselect: () => set({ selectedId: null }),
 
@@ -177,6 +186,8 @@ export const useStore = create<State>()(
         selectedId: s.selectedId,
         sidebarCollapsed: s.sidebarCollapsed,
         showSubChannels: s.showSubChannels,
+        externalPlayer: s.externalPlayer,
+        externalM2tsMode: s.externalM2tsMode,
       }),
       // localStorage から restore 完了を待ってから初回 UI 判断するためのフラグ。
       // SSG/Static Export で稀にあるレース (useEffect が hydrate より早く走る) を防ぐ。
