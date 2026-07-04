@@ -19,7 +19,12 @@ const rules: Rule[] = [
     description: "ストリームの起動がタイムアウトしました",
   },
   {
-    test: (m) => /WebGPU|WebCodecs|SharedArrayBuffer|iOS\s*\/\s*iPadOS/i.test(m),
+    test: (m) => /iOS\s*\/\s*iPadOS/i.test(m),
+    description:
+      "iPhone / iPad のブラウザでは TS 直接再生に対応していません。下の「アプリで開く」から Infuse / VLC で再生するか、EPGStation の HLS ソースをご利用ください",
+  },
+  {
+    test: (m) => /WebGPU|WebCodecs|SharedArrayBuffer/i.test(m),
     description:
       "このブラウザ/端末では TS 直接再生に対応していません",
   },

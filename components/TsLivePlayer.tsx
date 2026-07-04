@@ -81,14 +81,19 @@ function detectAppleMobileWebKit(): boolean {
 async function initWasmModule(): Promise<TsLiveModule> {
   const nav = navigator as NavigatorWithGPU;
 
+  // iOS / iPadOS の WebKit は WebGPU の有無に関わらず TS 直接再生が成立しない
+  // (WebCodecs が MPEG-2 video を復号できない)。iOS 26 以降は navigator.gpu が
+  // 存在してしまい WebGPU チェックを素通りして無限ローディングになるため、
+  // WebGPU の有無より先に端末判定して即座に代替手段を案内する。
+  if (detectAppleMobileWebKit()) {
+    throw new Error(
+      "iOS / iPadOS のブラウザでは TS 直接モード (Mirakurun) を再生できません。" +
+        "下の「アプリで開く」から Infuse / VLC で再生するか、EPGStation の HLS ソース " +
+        "(/api/channels) をご利用ください。"
+    );
+  }
+
   if (!nav.gpu) {
-    if (detectAppleMobileWebKit()) {
-      throw new Error(
-        "iOS / iPadOS 上では現状ご利用いただけません。WebGPU が Feature Flag " +
-          "なため、有効化しても WebCodecs が MPEG-2 video の復号に対応せず再生不可です。" +
-          "Mac の Chrome / Edge / Safari からアクセスしてください。"
-      );
-    }
     throw new Error(
       "このブラウザは WebGPU に対応していません (Chrome / Edge 113+ もしくは macOS Safari 18+ をお試しください)"
     );
