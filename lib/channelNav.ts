@@ -1,5 +1,6 @@
 import { groupChannels } from "./m3u";
 import { filterSubChannels } from "./subchannel";
+import { channelMatchesSearch } from "./textNormalize";
 import type { Channel } from "./types";
 
 /** Sidebar の表示順と同一の平坦リスト (サブch フィルタ → 検索 → グループ順) */
@@ -9,9 +10,9 @@ export function visibleChannels(
   showSubChannels: boolean
 ): Channel[] {
   const base = showSubChannels ? channels : filterSubChannels(channels);
-  const q = search.trim().toLowerCase();
+  const q = search.trim();
   const filtered = q
-    ? base.filter((c) => c.name.toLowerCase().includes(q))
+    ? base.filter((c) => channelMatchesSearch(c.name, q))
     : base;
   return Array.from(groupChannels(filtered).values()).flat();
 }

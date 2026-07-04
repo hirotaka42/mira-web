@@ -12,13 +12,14 @@ http://example.com:40772/api/services/400101/stream
 `;
 
 describe("parseM3u", () => {
-  it("Mirakurun 互換 m3u を正しくパースする", () => {
+  it("Mirakurun 互換 m3u を正しくパースする(全角名はフロントで半角化)", () => {
     const channels = parseM3u(MIRAKURUN_SAMPLE);
     expect(channels).toHaveLength(2);
 
+    // 放送由来の全角英数記号・全角空白は半角化される(カナ・漢字は保持)
     expect(channels[0]).toEqual({
       id: "3273601024",
-      name: "ＮＨＫ総合１・東京",
+      name: "NHK総合1・東京",
       group: "GR",
       url: "http://example.com:40772/api/services/3273601024/stream",
       kind: "mirakurun-mpegts",
@@ -28,7 +29,7 @@ describe("parseM3u", () => {
 
     expect(channels[1]).toEqual({
       id: "400101",
-      name: "ＮＨＫ ＢＳ",
+      name: "NHK BS",
       group: "BS",
       url: "http://example.com:40772/api/services/400101/stream",
       kind: "mirakurun-mpegts",
