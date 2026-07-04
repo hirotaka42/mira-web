@@ -64,13 +64,14 @@ export function buildExternalPlayerUrl(
   player: ExternalPlayerKind,
   platform: MobilePlatform
 ): string | null {
-  const encoded = encodeURIComponent(streamUrl);
-
   if (platform === "ios") {
+    // EPGStation の OnAirSelectStreamState.getM2TSURL と同じ規則に合わせる:
+    // VLC のときだけ URL を encodeURIComponent し、Infuse は素の URL を渡す。
+    // (Infuse に percent-encode 済み URL を渡すと解釈できず再生できない)
     if (player === "infuse") {
-      return `infuse://x-callback-url/play?url=${encoded}`;
+      return `infuse://x-callback-url/play?url=${streamUrl}`;
     }
-    return `vlc-x-callback://x-callback-url/stream?url=${encoded}`;
+    return `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(streamUrl)}`;
   }
 
   if (platform === "android") {

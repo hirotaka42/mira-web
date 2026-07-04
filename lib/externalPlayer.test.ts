@@ -114,11 +114,10 @@ describe("externalStreamUrl", () => {
 describe("buildExternalPlayerUrl", () => {
   const stream = "http://192.168.1.10:40772/api/services/3273601024/stream";
 
-  it("ios × infuse", () => {
+  it("ios × infuse (URL は素のまま渡す = EPGStation 準拠)", () => {
     const result = buildExternalPlayerUrl(stream, "infuse", "ios");
-    expect(result).toBe(
-      `infuse://x-callback-url/play?url=${encodeURIComponent(stream)}`
-    );
+    // Infuse は percent-encode しない(EPGStation の getM2TSURL と同じ)
+    expect(result).toBe(`infuse://x-callback-url/play?url=${stream}`);
   });
 
   it("ios × vlc", () => {
