@@ -53,6 +53,10 @@ next-env.d.ts
 *.m3u8
 
 # Claude Code の自動生成ファイル
-AGENTS.md
-CLAUDE.md
 .claude/
+
+# ローカルの使い捨て作業領域(コミットしない)
+_work/
+
+# Claude Code のローカル専用設定
+.claude/settings.local.json
