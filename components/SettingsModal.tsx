@@ -8,6 +8,9 @@ import { clearAllAppCaches } from "@/lib/cacheReset";
 import type { ExternalPlayerKind } from "@/lib/externalPlayer";
 import type { M2tsModeInfo } from "@/lib/epgstationConfig";
 import { resolveEpgstationOrigin, fetchM2tsModes } from "@/lib/epgstationConfig";
+import { exportSettings, downloadFile } from "@/lib/settingsFile";
+import type { Channel } from "@/lib/types";
+import { Download } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -292,6 +295,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                 Mirakurun の URL → ts-live.js モード (高画質、PC のみ) / EPGStation の{" "}
                 <code className="text-slate-400">/api/channels</code> → HLS モード (iOS 含む全環境) で自動切替
               </p>
+              <FormatHelp />
             </div>
           )}
 
@@ -307,13 +311,14 @@ export default function SettingsModal({ open, onClose }: Props) {
                 className="w-full h-36 bg-slate-950 border border-slate-700 rounded-md px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500 font-mono resize-none"
               />
               <BaseUrlField value={baseUrl} onChange={setBaseUrl} presets={presets} />
+              <FormatHelp />
             </div>
           )}
 
           {tab === "file" && (
             <div>
               <label className="block text-xs text-slate-400 mb-2">
-                .m3u / .m3u8 / EPGStation の channels JSON ファイルを選択
+                .m3u / .m3u8 / channels JSON / 書き出した設定 JSON ファイルを選択
               </label>
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -467,6 +472,40 @@ export default function SettingsModal({ open, onClose }: Props) {
               <Eraser size={12} />{" "}
               {clearingCache ? "クリア中…" : "キャッシュをクリア"}
             </button>
+            <button
+              onClick={() => {
+                const m3u = channelsToM3u(channels);
+                downloadFile("mira-web-playlist.m3u", "audio/x-mpegurl", m3u);
+              }}
+              disabled={channels.length === 0}
+              className="text-xs text-slate-500 hover:text-cyan-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+              title="現在のチャンネル一覧を標準 M3U で書き出します"
+            >
+              <Download size={12} /> プレイリスト (.m3u)
+            </button>
+            <button
+              onClick={() => {
+                const now = new Date();
+                const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+                const json = exportSettings({
+                  source: currentSource,
+                  showSubChannels,
+                  externalPlayer,
+                  externalM2tsMode,
+                  now: now.toISOString(),
+                });
+                downloadFile(
+                  `mira-web-settings-${stamp}.json`,
+                  "application/json",
+                  json
+                );
+              }}
+              disabled={!currentSource}
+              className="text-xs text-slate-500 hover:text-cyan-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+              title="接続先 URL を含む設定ファイルを書き出します"
+            >
+              <Download size={12} /> 設定を書き出す
+            </button>
           </div>
           <div className="flex gap-2">
             <button
@@ -569,4 +608,54 @@ function TabButton({
       {children}
     </button>
   );
+}
+
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+function FormatHelp() {
+  return (
+    <details className="mt-3 text-[11px] text-slate-500">
+      <summary className="cursor-pointer hover:text-slate-400 select-none">
+        受け付ける形式
+      </summary>
+      <div className="mt-2 space-y-2 leading-relaxed">
+        <div>
+          <strong className="text-slate-400">M3U プレイリスト</strong>
+          <pre className="mt-1 p-2 rounded bg-slate-950 text-slate-400 overflow-x-auto text-[10px]">{`#EXTM3U
+#EXTINF:-1 tvg-id="...",チャンネル名
+http://...`}</pre>
+          <div className="mt-1">
+            Mirakurun の <code className="text-slate-400">/api/iptv/playlist</code> がこの形式。
+            <a href={`${BASE_PATH}/samples/sample-playlist.m3u`} download className="text-cyan-500 hover:text-cyan-400 ml-1">サンプル .m3u</a>
+          </div>
+        </div>
+        <div>
+          <strong className="text-slate-400">EPGStation channels JSON</strong>
+          <pre className="mt-1 p-2 rounded bg-slate-950 text-slate-400 overflow-x-auto text-[10px]">{`[{"id":..., "name":"...", "channelType":"GR"}, ...]`}</pre>
+          <div className="mt-1">
+            <code className="text-slate-400">/api/channels</code> の生 JSON。テキスト/ファイルモードでは Base URL が必須。
+            <a href={`${BASE_PATH}/samples/sample-channels.json`} download className="text-cyan-500 hover:text-cyan-400 ml-1">サンプル .json</a>
+          </div>
+        </div>
+        <div>
+          <strong className="text-slate-400">設定ファイル JSON</strong>
+          <div className="mt-1">
+            「設定を書き出す」で生成した JSON。ファイルタブに D&D すると接続先と表示設定をまとめて復元。
+          </div>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+/** channels を標準 M3U 形式に変換する */
+function channelsToM3u(channels: Channel[]): string {
+  const lines = ["#EXTM3U"];
+  for (const ch of channels) {
+    let attrs = `tvg-id="${ch.id}" group-title="${ch.group}"`;
+    if (ch.logo) attrs += ` tvg-logo="${ch.logo}"`;
+    lines.push(`#EXTINF:-1 ${attrs},${ch.name}`);
+    lines.push(ch.url);
+  }
+  return lines.join("\n") + "\n";
 }

@@ -1,0 +1,20 @@
+[
+  {
+    "id": 3273601024,
+    "serviceId": 1024,
+    "networkId": 32736,
+    "name": "NHK総合1",
+    "channelType": "GR",
+    "channel": "27",
+    "hasLogoData": true
+  },
+  {
+    "id": 3273701032,
+    "serviceId": 1032,
+    "networkId": 32737,
+    "name": "NHK Eテレ1",
+    "channelType": "GR",
+    "channel": "26",
+    "hasLogoData": true
+  }
+]
