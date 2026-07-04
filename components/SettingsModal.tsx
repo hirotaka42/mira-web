@@ -7,8 +7,7 @@ import { getDefaultPresetUrl, getPlaylistPresets } from "@/lib/presets";
 import { clearAllAppCaches } from "@/lib/cacheReset";
 import type { ExternalPlayerKind } from "@/lib/externalPlayer";
 import type { M2tsModeInfo } from "@/lib/epgstationConfig";
-import { epgstationOrigin, fetchM2tsModes } from "@/lib/epgstationConfig";
-import { getEpgstationOrigin } from "@/lib/presets";
+import { resolveEpgstationOrigin, fetchM2tsModes } from "@/lib/epgstationConfig";
 
 interface Props {
   open: boolean;
@@ -79,7 +78,7 @@ export default function SettingsModal({ open, onClose }: Props) {
   // EPG パネルと同じくプリセットの EPGStation URL へフォールバックする。
   useEffect(() => {
     if (!open) return;
-    const origin = epgstationOrigin(channels) ?? getEpgstationOrigin();
+    const origin = resolveEpgstationOrigin(channels);
     if (!origin) {
       setM2tsModes(null);
       return;

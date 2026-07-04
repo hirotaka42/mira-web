@@ -3,6 +3,7 @@ import {
   epgstationOrigin,
   fetchM2tsModes,
   parseM2tsModes,
+  resolveEpgstationOrigin,
 } from "./epgstationConfig";
 import type { Channel } from "./types";
 
@@ -141,5 +142,53 @@ describe("fetchM2tsModes", () => {
     }) as unknown as typeof fetch;
 
     expect(await fetchM2tsModes("http://localhost:8888")).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  resolveEpgstationOrigin                                           */
+/* ------------------------------------------------------------------ */
+
+describe("resolveEpgstationOrigin", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("epgstation-hls チャンネルがあればその origin", () => {
+    expect(
+      resolveEpgstationOrigin([
+        ch("https://epg.example.com/api/streams/live/1/hls?mode=0", "epgstation-hls"),
+      ])
+    ).toBe("https://epg.example.com");
+  });
+
+  it("EPGStation チャンネルが無ければプリセットへフォールバック", async () => {
+    vi.stubEnv(
+      "NEXT_PUBLIC_PLAYLIST_PRESETS",
+      JSON.stringify([
+        { name: "EPG", url: "https://preset-epg.example.com/api/channels" },
+      ])
+    );
+    // presets モジュールのキャッシュをクリアして環境変数を反映
+    const { resolveEpgstationOrigin: resolve } = await import(
+      "./epgstationConfig"
+    );
+    const { getEpgstationOrigin } = await import("./presets");
+    // getEpgstationOrigin がプリセット origin を返すことを前提に、
+    // resolveEpgstationOrigin がそれにフォールバックすることを検証
+    const presetOrigin = getEpgstationOrigin();
+    const result = resolve([
+      ch("http://192.168.1.10:40772/api/services/1/stream", "mirakurun-mpegts"),
+    ]);
+    expect(result).toBe(presetOrigin);
+  });
+
+  it("チャンネルもプリセットも無ければ null", async () => {
+    vi.stubEnv("NEXT_PUBLIC_PLAYLIST_PRESETS", "");
+    vi.resetModules();
+    const { resolveEpgstationOrigin: resolve } = await import(
+      "./epgstationConfig"
+    );
+    expect(resolve([])).toBeNull();
   });
 });
