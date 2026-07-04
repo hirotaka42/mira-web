@@ -30,10 +30,12 @@ describe("describePlayerError", () => {
     );
   });
 
-  it("iOS / iPadOS → 非対応", () => {
-    expect(describePlayerError("iOS / iPadOS 上では現状ご利用いただけません")).toContain(
-      "対応していません"
+  it("iOS / iPadOS → 非対応 + 代替手段を案内", () => {
+    const msg = describePlayerError(
+      "iOS / iPadOS のブラウザでは TS 直接モード (Mirakurun) を再生できません。"
     );
+    expect(msg).toContain("対応していません");
+    expect(msg).toContain("アプリで開く");
   });
 
   it("mixed content → HTTPS/HTTP 不一致", () => {
