@@ -396,10 +396,13 @@ export default function SettingsModal({ open, onClose }: Props) {
                         : "border-slate-700 text-slate-400 hover:border-slate-500"
                     }`}
                   >
-                    {kind === "infuse" ? "Infuse（既定）" : "VLC"}
+                    {kind === "infuse" ? "Infuse" : "VLC（既定）"}
                   </button>
                 ))}
               </div>
+              <p className="text-[11px] text-amber-500/80 mb-3 leading-relaxed">
+                ライブ視聴は VLC を推奨。Infuse はライブ TS を再生できません(録画ファイル向け)。
+              </p>
               <label className="block text-xs text-slate-400 mb-1.5">
                 EPGStation 画質モード (m2ts mode)
               </label>
