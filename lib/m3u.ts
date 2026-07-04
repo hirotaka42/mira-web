@@ -1,4 +1,5 @@
 import type { Channel, ChannelKind } from "./types";
+import { toHalfWidth } from "./textNormalize";
 
 /**
  * URL から再生方式を推定する。
@@ -56,7 +57,9 @@ export function parseM3u(text: string, baseUrl?: string | URL): Channel[] {
       const m = line.match(EXTINF_RE);
       if (!m) continue;
       const attrs = parseAttrs(m[1]);
-      const name = m[2].trim();
+      // 放送由来の全角英数記号をフロントで半角化して表示する
+      // (Mirakurun / EPGStation とも全角で届くため。カナ・漢字は保持)。
+      const name = toHalfWidth(m[2].trim());
       pending = { name, attrs };
       continue;
     }

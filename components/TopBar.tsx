@@ -2,7 +2,6 @@
 
 import { Menu, Settings, RotateCw } from "lucide-react";
 import { useStore, useSelectedChannel } from "@/lib/store";
-import { versionShort } from "@/lib/version";
 
 interface Props {
   onOpenSettings: () => void;
@@ -46,14 +45,9 @@ export default function TopBar({ onOpenSettings, onToggleMobileSidebar }: Props)
         <Menu size={18} />
       </button>
 
-      <div className="font-semibold text-cyan-400 tracking-wide flex items-baseline gap-2 shrink-0">
-        <span className="text-sm flex items-center gap-2">
-          <span aria-hidden>▣</span>
-          Mira WebUI
-        </span>
-        <span className="text-[10px] text-slate-500 font-normal tabular-nums">
-          {versionShort}
-        </span>
+      <div className="font-semibold text-cyan-400 tracking-wide text-sm flex items-center gap-2 shrink-0">
+        <span aria-hidden>▣</span>
+        Mira WebUI
       </div>
 
       <div className="flex-1 flex items-center text-sm text-slate-200 min-w-0">
@@ -63,7 +57,9 @@ export default function TopBar({ onOpenSettings, onToggleMobileSidebar }: Props)
               LIVE
             </span>
             <span className="truncate">{selected.name}</span>
-            <span className="text-slate-500 ml-2 text-xs shrink-0">
+            {/* グループ・ID はサイドバーと重複する副情報。狭い端末では
+                隠して本文(チャンネル名)を優先し、横溢れも防ぐ。≥640px で表示。 */}
+            <span className="text-slate-500 ml-2 text-xs shrink-0 hidden sm:inline">
               {selected.group} · {selected.id}
             </span>
           </>
