@@ -54,4 +54,5 @@
 <!-- AGENTS-SHARED §11 に従い、AI が追記・棚卸しする(追記は都度ユーザーに確認)。
      同じ注意・同じエラーの「2 回目」で追記する。この節以外は AI が勝手に書き換えない。
      形式: - [YYYY-MM-DD] 事象 → 原因 → 次からどうする -->
-- (まだ無し)
+- [2026-07-04] バックグラウンドの委任エージェント(fast-worker 等)が停止しているのに「稼働中」と誤認して長時間放置し、ユーザーを待たせた → 完了指標(ブランチ push の有無)だけを見て「生存」を確認していなかった。停止と「遅いだけ」を区別できていなかった → **委任中は生存を能動確認する**: transcript(tasks/<agentId>.output)の最終イベント時刻が進んでいるかで判定し、数分間進んでいなければ停止とみなして自分で引き取る。状況報告は「まだ完了していない」ではなく「前進している証拠」を根拠にする。**原因も修正も自分で確定済みの小さな変更は委任せず直接行う**(今回の Safari fetch 修正は自分で 5 分で直せた)。
+- [2026-07-04] iPhone/iPad の Safari で全データ取得が失敗 → `lib/safeFetch.ts` の `buildFetchInit` が Chromium 専用の非標準 fetch オプション `targetAddressSpace` を付与しており、Safari(WebKit)がこれを `TypeError` で拒否していた → ブラウザ非標準の fetch オプションは feature detection(`new Request(url, {opt})` が例外を投げるか)してから付ける。フロントの動作確認は Chrome だけでなく実機 Safari でも行う(safaridriver 経由で WebDriver 操作できる)。
