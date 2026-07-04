@@ -120,7 +120,10 @@ export const useStore = create<State>()(
       selectedId: null,
       sidebarCollapsed: false,
       showSubChannels: false,
-      externalPlayer: "infuse" as ExternalPlayerKind,
+      // 既定は VLC。ライブ TS(MPEG-2 TS)は VLC が再生でき、Infuse は
+      // demux できず再生不可(実機 iPhone / iPad で確認)。EPGStation も
+      // ライブ m2ts は VLC、Infuse は録画ファイル用としている。
+      externalPlayer: "vlc" as ExternalPlayerKind,
       externalM2tsMode: 0,
       search: "",
       loading: false,
