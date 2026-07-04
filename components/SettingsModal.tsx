@@ -8,6 +8,7 @@ import { clearAllAppCaches } from "@/lib/cacheReset";
 import type { ExternalPlayerKind } from "@/lib/externalPlayer";
 import type { M2tsModeInfo } from "@/lib/epgstationConfig";
 import { epgstationOrigin, fetchM2tsModes } from "@/lib/epgstationConfig";
+import { getEpgstationOrigin } from "@/lib/presets";
 
 interface Props {
   open: boolean;
@@ -73,10 +74,12 @@ export default function SettingsModal({ open, onClose }: Props) {
     setError(storeError);
   }, [storeError]);
 
-  // m2ts モード一覧を EPGStation から取得
+  // m2ts モード一覧を EPGStation から取得。
+  // Mirakurun プレイリスト使用中はチャンネルから origin を導けないため、
+  // EPG パネルと同じくプリセットの EPGStation URL へフォールバックする。
   useEffect(() => {
     if (!open) return;
-    const origin = epgstationOrigin(channels);
+    const origin = epgstationOrigin(channels) ?? getEpgstationOrigin();
     if (!origin) {
       setM2tsModes(null);
       return;
