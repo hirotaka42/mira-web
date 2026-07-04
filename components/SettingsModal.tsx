@@ -295,6 +295,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                 Mirakurun の URL → ts-live.js モード (高画質、PC のみ) / EPGStation の{" "}
                 <code className="text-slate-400">/api/channels</code> → HLS モード (iOS 含む全環境) で自動切替
               </p>
+              <FormatHelp />
             </div>
           )}
 
@@ -310,6 +311,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                 className="w-full h-36 bg-slate-950 border border-slate-700 rounded-md px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500 font-mono resize-none"
               />
               <BaseUrlField value={baseUrl} onChange={setBaseUrl} presets={presets} />
+              <FormatHelp />
             </div>
           )}
 
@@ -605,6 +607,44 @@ function TabButton({
     >
       {children}
     </button>
+  );
+}
+
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+function FormatHelp() {
+  return (
+    <details className="mt-3 text-[11px] text-slate-500">
+      <summary className="cursor-pointer hover:text-slate-400 select-none">
+        受け付ける形式
+      </summary>
+      <div className="mt-2 space-y-2 leading-relaxed">
+        <div>
+          <strong className="text-slate-400">M3U プレイリスト</strong>
+          <pre className="mt-1 p-2 rounded bg-slate-950 text-slate-400 overflow-x-auto text-[10px]">{`#EXTM3U
+#EXTINF:-1 tvg-id="...",チャンネル名
+http://...`}</pre>
+          <div className="mt-1">
+            Mirakurun の <code className="text-slate-400">/api/iptv/playlist</code> がこの形式。
+            <a href={`${BASE_PATH}/samples/sample-playlist.m3u`} download className="text-cyan-500 hover:text-cyan-400 ml-1">サンプル .m3u</a>
+          </div>
+        </div>
+        <div>
+          <strong className="text-slate-400">EPGStation channels JSON</strong>
+          <pre className="mt-1 p-2 rounded bg-slate-950 text-slate-400 overflow-x-auto text-[10px]">{`[{"id":..., "name":"...", "channelType":"GR"}, ...]`}</pre>
+          <div className="mt-1">
+            <code className="text-slate-400">/api/channels</code> の生 JSON。テキスト/ファイルモードでは Base URL が必須。
+            <a href={`${BASE_PATH}/samples/sample-channels.json`} download className="text-cyan-500 hover:text-cyan-400 ml-1">サンプル .json</a>
+          </div>
+        </div>
+        <div>
+          <strong className="text-slate-400">設定ファイル JSON</strong>
+          <div className="mt-1">
+            「設定を書き出す」で生成した JSON。ファイルタブに D&D すると接続先と表示設定をまとめて復元。
+          </div>
+        </div>
+      </div>
+    </details>
   );
 }
 

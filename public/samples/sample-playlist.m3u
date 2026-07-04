@@ -1,0 +1,15 @@
+#EXTM3U
+# Mirakurun プレイリストの記入例
+# URL 行を自分の Mirakurun / EPGStation の値に置き換えてください
+#
+# Mirakurun の場合:
+#   http://<Mirakurun のホスト>:40772/api/services/<サービス ID>/stream
+#
+# EPGStation (HLS) の場合:
+#   http://<EPGStation のホスト>:8888/api/streams/live/<チャンネル ID>/hls?mode=0
+
+#EXTINF:-1 tvg-id="3273601024" group-title="GR",NHK総合1
+http://your-mirakurun:40772/api/services/3273601024/stream
+
+#EXTINF:-1 tvg-id="3273701032" group-title="GR",NHK Eテレ1
+http://your-mirakurun:40772/api/services/3273701032/stream
