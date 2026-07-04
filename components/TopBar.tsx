@@ -2,6 +2,7 @@
 
 import { Menu, Settings, RotateCw } from "lucide-react";
 import { useStore, useSelectedChannel } from "@/lib/store";
+import { versionShort } from "@/lib/version";
 
 interface Props {
   onOpenSettings: () => void;
@@ -45,9 +46,14 @@ export default function TopBar({ onOpenSettings, onToggleMobileSidebar }: Props)
         <Menu size={18} />
       </button>
 
-      <div className="text-sm font-semibold text-cyan-400 tracking-wide flex items-center gap-2">
-        <span aria-hidden>▣</span>
-        Mira WebUI
+      <div className="font-semibold text-cyan-400 tracking-wide flex items-baseline gap-2 shrink-0">
+        <span className="text-sm flex items-center gap-2">
+          <span aria-hidden>▣</span>
+          Mira WebUI
+        </span>
+        <span className="text-[10px] text-slate-500 font-normal tabular-nums">
+          {versionShort}
+        </span>
       </div>
 
       <div className="flex-1 flex items-center text-sm text-slate-200 min-w-0">
