@@ -1,5 +1,6 @@
 import type { Channel } from "./types";
 import { buildFetchInit, validateUrl } from "./safeFetch";
+import { getEpgstationOrigin } from "./presets";
 
 export interface M2tsModeInfo {
   name: string;
@@ -75,4 +76,11 @@ export function epgstationOrigin(channels: Channel[]): string | null {
     }
   }
   return null;
+}
+
+/** channels から EPGStation origin を導出し、無ければプリセットへフォールバック */
+export function resolveEpgstationOrigin(
+  channels: Channel[]
+): string | null {
+  return epgstationOrigin(channels) ?? getEpgstationOrigin();
 }

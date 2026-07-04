@@ -19,7 +19,12 @@ const GROUP_LABEL: Record<string, string> = {
   CS: "CS",
 };
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileSidebarOpen: boolean;
+  onCloseMobileSidebar: () => void;
+}
+
+export default function Sidebar({ mobileSidebarOpen, onCloseMobileSidebar }: SidebarProps) {
   const channels = useStore((s) => s.channels);
   const search = useStore((s) => s.search);
   const setSearch = useStore((s) => s.setSearch);
@@ -69,7 +74,7 @@ export default function Sidebar() {
     return (
       <aside
         style={safeLeftStyle}
-        className="w-14 bg-slate-800 border-r border-slate-700 shrink-0 overflow-hidden flex flex-col"
+        className="w-14 bg-slate-800 border-r border-slate-700 shrink-0 overflow-hidden hidden md:flex flex-col"
       >
         <div className="flex flex-col items-center py-4 gap-3">
           {Array.from(grouped.keys()).map((g) => {
@@ -89,11 +94,28 @@ export default function Sidebar() {
     );
   }
 
+  const handleSelect = (id: string) => {
+    selectChannel(id);
+    onCloseMobileSidebar();
+  };
+
   return (
-    <aside
-      style={safeLeftStyle}
-      className="w-72 bg-slate-800 border-r border-slate-700 shrink-0 flex flex-col overflow-hidden"
-    >
+    <>
+      {/* モバイル backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={onCloseMobileSidebar}
+        />
+      )}
+      <aside
+        style={safeLeftStyle}
+        className={`w-72 bg-slate-800 border-r border-slate-700 shrink-0 flex flex-col overflow-hidden ${
+          mobileSidebarOpen
+            ? "fixed inset-y-0 left-0 z-40 md:static"
+            : "hidden md:flex"
+        }`}
+      >
       <div className="p-3 border-b border-slate-700">
         <div className="relative">
           <Search
@@ -126,12 +148,13 @@ export default function Sidebar() {
               group={group}
               items={items}
               selectedId={selectedId}
-              onSelect={selectChannel}
+              onSelect={handleSelect}
             />
           ))
         )}
       </div>
     </aside>
+    </>
   );
 }
 

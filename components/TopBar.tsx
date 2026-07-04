@@ -5,9 +5,10 @@ import { useStore, useSelectedChannel } from "@/lib/store";
 
 interface Props {
   onOpenSettings: () => void;
+  onToggleMobileSidebar: () => void;
 }
 
-export default function TopBar({ onOpenSettings }: Props) {
+export default function TopBar({ onOpenSettings, onToggleMobileSidebar }: Props) {
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const reload = useStore((s) => s.reload);
   const loading = useStore((s) => s.loading);
@@ -27,9 +28,18 @@ export default function TopBar({ onOpenSettings }: Props) {
         height: "calc(3.5rem + env(safe-area-inset-top))",
       }}
     >
+      {/* md 未満: drawer トグル */}
+      <button
+        onClick={onToggleMobileSidebar}
+        className="w-9 h-9 rounded-md flex md:hidden items-center justify-center text-slate-300 hover:bg-slate-700 transition-colors"
+        aria-label="メニュー"
+      >
+        <Menu size={18} />
+      </button>
+      {/* md 以上: 従来の sidebar 折りたたみ */}
       <button
         onClick={toggleSidebar}
-        className="w-9 h-9 rounded-md flex items-center justify-center text-slate-300 hover:bg-slate-700 transition-colors"
+        className="w-9 h-9 rounded-md hidden md:flex items-center justify-center text-slate-300 hover:bg-slate-700 transition-colors"
         aria-label="サイドバー切替"
       >
         <Menu size={18} />

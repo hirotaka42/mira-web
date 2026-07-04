@@ -7,8 +7,7 @@ import { getDefaultPresetUrl, getPlaylistPresets } from "@/lib/presets";
 import { clearAllAppCaches } from "@/lib/cacheReset";
 import type { ExternalPlayerKind } from "@/lib/externalPlayer";
 import type { M2tsModeInfo } from "@/lib/epgstationConfig";
-import { epgstationOrigin, fetchM2tsModes } from "@/lib/epgstationConfig";
-import { getEpgstationOrigin } from "@/lib/presets";
+import { resolveEpgstationOrigin, fetchM2tsModes } from "@/lib/epgstationConfig";
 
 interface Props {
   open: boolean;
@@ -79,7 +78,7 @@ export default function SettingsModal({ open, onClose }: Props) {
   // EPG パネルと同じくプリセットの EPGStation URL へフォールバックする。
   useEffect(() => {
     if (!open) return;
-    const origin = epgstationOrigin(channels) ?? getEpgstationOrigin();
+    const origin = resolveEpgstationOrigin(channels);
     if (!origin) {
       setM2tsModes(null);
       return;
@@ -192,7 +191,7 @@ export default function SettingsModal({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4"
       onClick={onClose}
     >
       <div
@@ -201,10 +200,13 @@ export default function SettingsModal({ open, onClose }: Props) {
         aria-modal="true"
         aria-labelledby="settings-title"
         tabIndex={-1}
-        className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden outline-none"
+        className="flex flex-col w-full max-w-2xl bg-slate-900 sm:border sm:border-slate-700 rounded-none sm:rounded-xl shadow-2xl overflow-hidden outline-none h-[var(--app-h,100dvh)] sm:h-auto sm:max-h-[calc(var(--app-h,100dvh)-2rem)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center px-5 py-3.5 border-b border-slate-700">
+        <div
+          className="shrink-0 flex items-center px-5 pb-3.5 border-b border-slate-700"
+          style={{ paddingTop: "max(env(safe-area-inset-top), 0.875rem)" }}
+        >
           <h2 id="settings-title" className="text-base font-semibold text-slate-100">m3u 設定</h2>
           {channelCount > 0 && (
             <span className="ml-3 text-xs text-slate-500">
@@ -220,7 +222,8 @@ export default function SettingsModal({ open, onClose }: Props) {
           </button>
         </div>
 
-        <div className="px-5 pt-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div className="px-5 pt-4 sticky top-0 z-10 bg-slate-900">
           <div className="flex gap-1 border-b border-slate-700">
             <TabButton active={tab === "url"} onClick={() => setTab("url")}>
               <Link2 size={13} /> URL
@@ -360,6 +363,7 @@ export default function SettingsModal({ open, onClose }: Props) {
 
         <div className="px-5 pb-4">
           <div className="border-t border-slate-700 pt-4">
+            <div className="text-xs text-slate-400 mb-3">表示・再生</div>
             <label className="flex items-center gap-2.5 text-sm text-slate-300 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -418,8 +422,12 @@ export default function SettingsModal({ open, onClose }: Props) {
             </div>
           </div>
         </div>
+        </div>{/* end scroll container */}
 
-        <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-700 bg-slate-900/60 gap-3 flex-wrap">
+        <div
+          className="shrink-0 flex items-center justify-between px-5 border-t border-slate-700 bg-slate-900/60 gap-3 flex-wrap"
+          style={{ paddingTop: "0.875rem", paddingBottom: "max(env(safe-area-inset-bottom), 0.875rem)" }}
+        >
           <div className="flex items-center gap-4 flex-wrap">
             <button
               onClick={() => {

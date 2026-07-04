@@ -12,7 +12,7 @@
  */
 
 import { buildFetchInit, validateUrl } from "./safeFetch";
-import { getEpgstationOrigin } from "./presets";
+import { resolveEpgstationOrigin } from "./epgstationConfig";
 import type { Channel } from "./types";
 
 export interface CurrentProgram {
@@ -44,19 +44,10 @@ interface EpgstationBroadcastingItem {
 
 /**
  * EPG 取得用の EPGStation origin を決定する。
- *   - epgstation-hls チャンネル → channel.url の origin
- *   - mirakurun-mpegts チャンネル → PLAYLIST_PRESETS から自動検出
+ * resolveEpgstationOrigin に委譲: チャンネル URL → プリセットの順にフォールバック。
  */
 function resolveEpgOrigin(channel: Channel): string | null {
-  if (channel.kind === "epgstation-hls") {
-    try {
-      return validateUrl(channel.url).url.origin;
-    } catch {
-      return null;
-    }
-  }
-  // Mirakurun mode: presets から EPGStation を探す
-  return getEpgstationOrigin();
+  return resolveEpgstationOrigin([channel]);
 }
 
 /**
