@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ドキュメント入口 — &lt;リポジトリ名&gt;</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#11151f;--line:#252b3b;--tx:#dde3f0;--tx2:#8b93a7;
+    --acc:#7aa2f7;--ok:#9ece6a;--warn:#e0af68;--err:#f7768e}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);line-height:1.75;
+    font-family:"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 24px 100px}
+  h1{font-size:24px;margin:0 0 4px}
+  .sub{color:var(--tx2);margin:0 0 24px}
+  h2{font-size:18px;margin:34px 0 12px;border-left:4px solid var(--acc);padding-left:11px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:15px 18px;text-decoration:none;color:inherit}
+  .card:hover{border-color:var(--acc)}
+  .card .t{font-weight:700;margin-bottom:5px;color:var(--acc)}
+  .card .d{color:var(--tx2);font-size:13.5px}
+  code{background:#1a2030;color:#9fd3ff;padding:1px 6px;border-radius:5px;font-family:Consolas,monospace;font-size:13px}
+  footer{margin-top:48px;color:#586079;font-size:12px;border-top:1px solid var(--line);padding-top:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ドキュメント入口</h1>
+  <p class="sub">&lt;リポジトリ名&gt; の横断ドキュメントハブ。体系は <code>AGENTS-SHARED.md §8</code> に準拠。</p>
+
+  <h2>🗂 作業エピソード台帳(issue / future / project)</h2>
+  <div class="grid">
+    <a class="card" href="issue/index.html"><div class="t">issue 台帳</div><div class="d">課題対応(不具合・改善要望など問題駆動)。</div></a>
+    <a class="card" href="future/index.html"><div class="t">future 台帳</div><div class="d">将来構想・検討(まだ確定していない探索)。</div></a>
+    <a class="card" href="project/index.html"><div class="t">project 台帳</div><div class="d">プロジェクト/取り組み単位のまとまった作業。</div></a>
+  </div>
+
+  <h2>📚 常設リファレンス(reference 区画)</h2>
+  <div class="grid">
+    <a class="card" href="reference/00_requirements/"><div class="t">00 requirements</div><div class="d">要求・要求分析(何のためか)。</div></a>
+    <a class="card" href="reference/01_spec/"><div class="t">01 spec</div><div class="d">仕様・契約。</div></a>
+    <a class="card" href="reference/02_architecture/"><div class="t">02 architecture</div><div class="d">アーキテクチャ・設計の構造。</div></a>
+    <a class="card" href="reference/03_decisions/"><div class="t">03 decisions (ADR)</div><div class="d">設計決定の記録。追記専用・supersede。</div></a>
+    <a class="card" href="reference/04_usage/"><div class="t">04 usage</div><div class="d">使い方(how-to と reference を分ける)。</div></a>
+    <a class="card" href="reference/05_explanation/"><div class="t">05 explanation</div><div class="d">背景・なぜ(補足理解)。</div></a>
+  </div>
+
+  <footer>新規ドキュメントは手書きせず <code>scripts/new-doc.mjs</code> と <code>docs/_templates/</code> から始める。</footer>
+</div>
+</body>
+</html>

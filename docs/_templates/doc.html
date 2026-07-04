@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>&lt;ドキュメント識別名&gt;</title>
+<style>
+  :root{
+    --bg:#ffffff;--panel:#f6f8fa;--line:#d8dee4;--tx:#1f2328;--tx2:#59636e;
+    --acc:#0969da;--ok:#1a7f37;--warn:#9a6700;--err:#d1242f;
+    --code-bg:#f6f8fa;--code-tx:#0550ae;--th-bg:#f6f8fa;--note-bg:#ddf4ff;
+  }
+  html[data-theme="dark"]{
+    --bg:#0b0e14;--panel:#11151f;--line:#252b3b;--tx:#dde3f0;--tx2:#8b93a7;
+    --acc:#7aa2f7;--ok:#9ece6a;--warn:#e0af68;--err:#f7768e;
+    --code-bg:#1a2030;--code-tx:#9fd3ff;--th-bg:#1a2030;--note-bg:#162033;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--tx);
+    line-height:1.8;font-size:16px;letter-spacing:0.02em;
+    font-feature-settings:"palt" 1;
+    font-family:"Hiragino Sans","Noto Sans JP","Segoe UI",sans-serif;
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:40px 24px 100px}
+  a{color:var(--acc)}
+  h1{font-size:24px;margin:0 0 8px;letter-spacing:0.01em;font-weight:700}
+  .meta{margin:12px 0 24px;color:var(--tx2);font-size:13px}
+  .tag{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;
+    background:var(--panel);color:var(--tx2);margin:0 6px 6px 0;border:1px solid var(--line)}
+  .tag b{color:var(--tx)}
+  h2{font-size:19px;margin:32px 0 12px;border-left:4px solid var(--acc);padding-left:12px;font-weight:700}
+  h3{font-size:16px;margin:22px 0 8px;font-weight:700}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--th-bg)}
+  code{background:var(--code-bg);color:var(--code-tx);padding:1px 6px;border-radius:5px;
+    font-family:"SF Mono","Consolas",monospace;font-size:13px;letter-spacing:0}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow:auto}
+  pre code{background:transparent;padding:0}
+  .note{border-left:4px solid var(--acc);background:var(--note-bg);
+    padding:12px 16px;border-radius:0 8px 8px 0;margin:16px 0}
+  figure{margin:18px 0}
+  figcaption{color:var(--tx2);font-size:13px;margin-top:6px}
+  footer{margin-top:48px;color:var(--tx2);font-size:12px;border-top:1px solid var(--line);padding-top:20px}
+  .theme-toggle{
+    position:fixed;top:14px;right:14px;z-index:100;
+    background:var(--panel);color:var(--tx);border:1px solid var(--line);
+    border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px;font-family:inherit;
+  }
+  .theme-toggle:hover{border-color:var(--acc);color:var(--acc)}
+  @media print{
+    html[data-theme="dark"]{--bg:#ffffff;--panel:#f6f8fa;--line:#d8dee4;--tx:#1f2328;--tx2:#59636e;
+      --acc:#0969da;--ok:#1a7f37;--warn:#9a6700;--err:#d1242f;
+      --code-bg:#f6f8fa;--code-tx:#0550ae;--th-bg:#f6f8fa;--note-bg:#ddf4ff}
+    .theme-toggle{display:none}
+    body{font-size:11pt;letter-spacing:0}
+    a{color:var(--tx);text-decoration:underline}
+  }
+</style>
+</head>
+<body>
+<button class="theme-toggle" type="button" aria-label="テーマ切替"
+  onclick="(()=>{const r=document.documentElement;const n=r.dataset.theme==='dark'?'light':'dark';if(n==='light')delete r.dataset.theme;else r.dataset.theme='dark';try{localStorage.setItem('docs-theme',n)}catch(e){}document.querySelector('.theme-toggle').textContent=n==='dark'?'☀ ライト':'☾ ダーク';})()">☾ ダーク</button>
+<script>
+  // ボタンは <script> より前(body 内)にあるので即時実行で querySelector できる。
+  // DOMContentLoaded を待たないことでトグル文字列の FOUC を避ける。
+  (function(){
+    try{var s=localStorage.getItem('docs-theme');if(s==='dark')document.documentElement.dataset.theme='dark';}catch(e){}
+    var b=document.querySelector('.theme-toggle');
+    if(b)b.textContent=document.documentElement.dataset.theme==='dark'?'☀ ライト':'☾ ダーク';
+  })();
+</script>
+<div class="wrap">
+  <h1>&lt;ドキュメント識別名&gt;</h1>
+  <div class="meta">
+    <span class="tag">対象: <b>&lt;対象&gt;</b></span>
+    <span class="tag">ブランチ: <b>&lt;branch&gt;</b></span>
+    <span class="tag">関連: <b>&lt;関連&gt;</b></span>
+  </div>
+
+  <h2>&lt;見出し&gt;</h2>
+  <p>&lt;本文。自己完結・外部 CSS/CDN なし。図は &lt;figure&gt; + インライン SVG。&gt;</p>
+
+  <footer>出典・根拠。</footer>
+</div>
+</body>
+</html>
