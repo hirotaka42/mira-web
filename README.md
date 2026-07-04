@@ -110,9 +110,12 @@ Mirakurun の m3u も同じ手順(m3u テキスト貼付 + Base URL に Mirakuru
 
 ## 画面の機能
 
+- **チャンネル名の半角表示**: 放送(ARIB)由来のチャンネル名は Mirakurun / EPGStation とも全角で届くため、フロント側で英数字・記号・空白を半角化して表示する(カナ・漢字は保持。例 `ＮＨＫ総合１・東京` → `NHK総合1・東京`)
+- **チャンネル検索(曖昧マッチ)**: 検索ボックスは部分一致に加えて、全角/半角・英字の大小・カタカナ/ひらがなを同一視し、ローマ字入力もかなへ変換して照合する(「あに」「アニ」「ani」いずれでも「BSアニマックス」等に一致)。入力中に現れる `×` ボタンでワンタップ消去
 - **EPG パネル**: 再生中チャンネルの番組名・時間・残り時間・進捗バー・あらすじを表示。30 秒ごとに自動更新。EPGStation の `/api/schedules/broadcasting` から取得し、Mirakurun 直モードでもプリセットに EPGStation の URL があればそちらを使用
 - **ストリーム情報パネル**: 解像度・ビットレート・コーデック・バッファ・ドロップを表示
 - **キーボードショートカット**(PC): `↑` / `↓` で表示中リストのチャンネル送り、`/` で検索ボックスへ、`f` で全画面、`m` でミュート(入力欄にフォーカス中は無効)
+- **バージョン表示**: 設定モーダル下部にアプリの版・コミット短縮 SHA・ビルド日を控えめに表示(どのデプロイかを特定できる)
 - **外部アプリ再生**: スマホ・タブレットではプレイヤー下に「アプリで開く」を表示。Mirakurun は TS 直 URL を、EPGStation は m2ts 変換 URL を VLC / Infuse に渡す(URL 形式は EPGStation の実装に合わせ、Infuse へは percent-encode せず渡す)。ライブ TS を再生できるのは VLC。デスクトップでは非表示
 - **PWA インストール**: iOS Safari は共有ボタン →「ホーム画面に追加」、Android Chrome はメニュー →「ホーム画面に追加」、Desktop Chrome / Edge はアドレスバーのインストールアイコン
 
@@ -141,6 +144,7 @@ npm run dev
 | `npm run typecheck` | TypeScript 型検査 |
 | `npm test` | Vitest ユニットテスト |
 | `node scripts/generate-icons.mjs` | PWA アイコンを SVG マスターから再生成(デザイン変更時のみ) |
+| `node scripts/viewport-check.mjs` | UI 変更時の全ビューポート表示検証(PC / タブレット / iPhone、最小 320px。要 Playwright。詳細は [`scripts/README.md`](scripts/README.md)) |
 
 ## デプロイ(GitHub Pages)
 
