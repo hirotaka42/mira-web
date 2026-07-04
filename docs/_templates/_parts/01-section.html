@@ -1,0 +1,42 @@
+<!--
+  分割→統合ワークフローの章 part(AGENTS-SHARED.md §8)。
+  この雛形をコピーして 02-, 03-, ... と連番で増やしていく。
+  - ファイル名は NN-kebab.html(2 桁ゼロ埋め + ケバブの章名。例 01-background.html)
+  - 1 ファイル = 1 <section>(h2 単位)。AI が一度の Edit で扱える範囲に収める
+  - <html>/<head>/<body> は持たない(統合時に 00-head.html がそれを担当する)
+  - 図は <figure> + インライン SVG + <figcaption>(色は currentColor を使う)
+-->
+<section id="kebab-section-id">
+  <h2>&lt;章タイトル&gt;</h2>
+  <p>&lt;本文。1 章で 1 つのテーマを扱う。長くなりすぎたら章を分ける。&gt;</p>
+
+  <h3>&lt;小見出し&gt;</h3>
+  <p>&lt;小見出しごとに段落を分ける。&gt;</p>
+
+  <!-- 表の例(必要なら)
+  <table>
+    <thead><tr><th>項目</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td>...</td><td>...</td></tr>
+    </tbody>
+  </table>
+  -->
+
+  <!-- 図の例(必要なら)
+  <figure>
+    <svg viewBox="0 0 480 160" width="100%" xmlns="http://www.w3.org/2000/svg" style="max-width:480px;display:block;margin:0 auto">
+      <g font-family="Hiragino Sans,sans-serif" font-size="13" fill="currentColor" stroke="currentColor">
+        <rect x="20" y="40" width="120" height="40" rx="6" fill="none" stroke-width="1.5"/>
+        <text x="80" y="65" text-anchor="middle" stroke="none">&lt;ボックス1&gt;</text>
+      </g>
+    </svg>
+    <figcaption>図 N: &lt;キャプション&gt;</figcaption>
+  </figure>
+  -->
+
+  <!-- 注記の例(必要なら)
+  <div class="note">
+    <strong>注意</strong>: &lt;補足情報&gt;
+  </div>
+  -->
+</section>

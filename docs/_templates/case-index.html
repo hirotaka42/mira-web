@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#{{ID}} — {{TITLE}}</title>
+<style>
+  :root{--bg:#ffffff;--panel:#f6f8fa;--line:#d8dee4;--tx:#1f2328;--tx2:#59636e;
+    --acc:#0969da;--ok:#1a7f37;--warn:#9a6700;--err:#d1242f;
+    --code-bg:#f6f8fa;--code-tx:#0550ae;--th-bg:#f6f8fa;--note-bg:#ddf4ff}
+  html[data-theme="dark"]{--bg:#0b0e14;--panel:#11151f;--line:#252b3b;--tx:#dde3f0;--tx2:#8b93a7;
+    --acc:#7aa2f7;--ok:#9ece6a;--warn:#e0af68;--err:#f7768e;
+    --code-bg:#1a2030;--code-tx:#9fd3ff;--th-bg:#1a2030;--note-bg:#162033}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);line-height:1.8;font-size:16px;
+    letter-spacing:0.02em;font-feature-settings:"palt" 1;
+    font-family:"Hiragino Sans","Noto Sans JP","Segoe UI",sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 24px 100px}
+  a{color:var(--acc)}
+  .crumb{font-size:13px;color:var(--tx2);margin-bottom:16px}
+  h1{font-size:24px;margin:0 0 8px;font-weight:700}
+  .meta{margin:14px 0 22px}
+  .tag{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;
+    background:var(--panel);color:var(--tx2);margin:0 6px 6px 0;border:1px solid var(--line)}
+  .tag b{color:var(--tx)}
+  .st{font-weight:700}.st-open{color:var(--warn)}.st-done{color:var(--ok)}
+  h2{font-size:18px;margin:28px 0 10px;border-left:3px solid var(--acc);padding-left:11px;font-weight:700}
+  .card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:14px 18px;margin:10px 0;text-decoration:none;color:inherit;transition:border-color .15s}
+  .card:hover{border-color:var(--acc)}
+  .card h3{margin:0 0 3px;font-size:15px;color:var(--acc);font-weight:700}
+  .card p{margin:0;color:var(--tx2);font-size:14px}
+  .summary{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px}
+  code{background:var(--code-bg);color:var(--code-tx);padding:1px 6px;border-radius:5px;
+    font-family:"SF Mono","Consolas",monospace;font-size:13px;letter-spacing:0}
+  footer{margin-top:48px;color:var(--tx2);font-size:12px;border-top:1px solid var(--line);padding-top:20px}
+  .theme-toggle{position:fixed;top:14px;right:14px;z-index:100;background:var(--panel);
+    color:var(--tx);border:1px solid var(--line);border-radius:999px;padding:6px 12px;
+    cursor:pointer;font-size:13px;font-family:inherit}
+  .theme-toggle:hover{border-color:var(--acc);color:var(--acc)}
+  @media print{
+    html[data-theme="dark"]{--bg:#ffffff;--panel:#f6f8fa;--line:#d8dee4;--tx:#1f2328;--tx2:#59636e;
+      --acc:#0969da;--ok:#1a7f37;--warn:#9a6700;--err:#d1242f;
+      --code-bg:#f6f8fa;--code-tx:#0550ae;--th-bg:#f6f8fa;--note-bg:#ddf4ff}
+    .theme-toggle{display:none}body{font-size:11pt;letter-spacing:0}
+    a{color:var(--tx);text-decoration:underline}
+  }
+</style>
+</head>
+<body>
+<button class="theme-toggle" type="button" aria-label="テーマ切替"
+  onclick="(()=>{const r=document.documentElement;const n=r.dataset.theme==='dark'?'light':'dark';if(n==='light')delete r.dataset.theme;else r.dataset.theme='dark';try{localStorage.setItem('docs-theme',n)}catch(e){}document.querySelector('.theme-toggle').textContent=n==='dark'?'☀ ライト':'☾ ダーク';})()">☾ ダーク</button>
+<script>(function(){try{var s=localStorage.getItem('docs-theme');if(s==='dark')document.documentElement.dataset.theme='dark';}catch(e){}var b=document.querySelector('.theme-toggle');if(b)b.textContent=document.documentElement.dataset.theme==='dark'?'☀ ライト':'☾ ダーク';})();</script>
+<div class="wrap">
+  <div class="crumb">← <a href="../index.html">{{BUCKET}} 台帳</a></div>
+  <h1>#{{ID}} — {{TITLE}}</h1>
+  <div class="meta">
+    <span class="tag">対象: <b>&lt;対象&gt;</b></span>
+    <span class="tag">ブランチ: <b>{{BUCKET}}/&lt;slug&gt;</b>(予定)</span>
+    <span class="tag">起票: <b>{{DATE}}</b></span>
+    <span class="tag st st-open">提案中(承認待ち)</span>
+  </div>
+
+  <div class="summary">
+    &lt;この案件は何か。背景・目的・到達したい状態を 2〜4 文で。&gt;
+  </div>
+
+  <h2>フェーズ</h2>
+  <!-- 使うフェーズだけ追加する。node scripts/new-doc.mjs phase {{BUCKET}} {{ID}} 01-investigation -->
+  <!-- new-doc:phase-insert (このコメントの直前にフェーズカードが挿入される。消さない) -->
+  <p style="color:var(--tx2)">まだフェーズがありません。<code>node scripts/new-doc.mjs phase {{BUCKET}} {{ID}} 01-investigation</code></p>
+
+  <footer>フェーズ: 01-investigation → 02-improvement → 03-design-proposals → 04-validation-audit → 05-final-design → 06-implementation-record(必要な段階だけ)。</footer>
+</div>
+</body>
+</html>
