@@ -8,6 +8,8 @@ import { clearAllAppCaches } from "@/lib/cacheReset";
 import type { ExternalPlayerKind } from "@/lib/externalPlayer";
 import type { M2tsModeInfo } from "@/lib/epgstationConfig";
 import { resolveEpgstationOrigin, fetchM2tsModes } from "@/lib/epgstationConfig";
+import { exportSettings, downloadFile } from "@/lib/settingsFile";
+import { Download } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -313,7 +315,7 @@ export default function SettingsModal({ open, onClose }: Props) {
           {tab === "file" && (
             <div>
               <label className="block text-xs text-slate-400 mb-2">
-                .m3u / .m3u8 / EPGStation の channels JSON ファイルを選択
+                .m3u / .m3u8 / channels JSON / 書き出した設定 JSON ファイルを選択
               </label>
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -466,6 +468,29 @@ export default function SettingsModal({ open, onClose }: Props) {
             >
               <Eraser size={12} />{" "}
               {clearingCache ? "クリア中…" : "キャッシュをクリア"}
+            </button>
+            <button
+              onClick={() => {
+                const now = new Date();
+                const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+                const json = exportSettings({
+                  source: currentSource,
+                  showSubChannels,
+                  externalPlayer,
+                  externalM2tsMode,
+                  now: now.toISOString(),
+                });
+                downloadFile(
+                  `mira-web-settings-${stamp}.json`,
+                  "application/json",
+                  json
+                );
+              }}
+              disabled={!currentSource}
+              className="text-xs text-slate-500 hover:text-cyan-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+              title="接続先 URL を含む設定ファイルを書き出します"
+            >
+              <Download size={12} /> 設定を書き出す
             </button>
           </div>
           <div className="flex gap-2">

@@ -12,6 +12,7 @@ import {
   looksLikeEpgstationChannels,
   type EpgstationChannel,
 } from "./epgstation";
+import { parseSettingsFile } from "./settingsFile";
 
 interface State {
   source: M3uSource | null;
@@ -130,6 +131,45 @@ export const useStore = create<State>()(
       setSource: async (src) => {
         set({ loading: true, error: null });
         try {
+          // 設定ファイル (mira-web-settings JSON) の検出 — 1 段のみ
+          if (src.kind === "text") {
+            const sf = parseSettingsFile(src.value);
+            if (sf) {
+              // 埋め込みの settings を store に適用
+              const patch: Partial<State> = {};
+              if (sf.settings.showSubChannels !== undefined)
+                patch.showSubChannels = sf.settings.showSubChannels;
+              if (sf.settings.externalPlayer !== undefined)
+                patch.externalPlayer = sf.settings.externalPlayer;
+              if (sf.settings.externalM2tsMode !== undefined)
+                patch.externalM2tsMode = sf.settings.externalM2tsMode;
+              if (Object.keys(patch).length > 0) set(patch);
+              // 埋め込み source で通常ロードを続行(再帰しない)
+              const innerSrc: M3uSource = {
+                kind: sf.source.kind,
+                value: sf.source.value,
+                ...(sf.source.baseUrl ? { baseUrl: sf.source.baseUrl } : {}),
+              };
+              const { text, baseUrl } = await loadFromSource(innerSrc);
+              const channels = parseM3u(text, baseUrl);
+              if (channels.length === 0) {
+                throw new Error(
+                  "チャンネルが見つかりませんでした (m3u 形式を確認してください)"
+                );
+              }
+              const prev = get().selectedId;
+              const stillExists =
+                prev && channels.some((c) => c.id === prev);
+              set({
+                source: { ...innerSrc, fetchedAt: Date.now() },
+                channels,
+                selectedId: stillExists ? prev : channels[0]?.id ?? null,
+                loading: false,
+                error: null,
+              });
+              return;
+            }
+          }
           const { text, baseUrl } = await loadFromSource(src);
           // baseUrl が与えられた場合は同一ホストのチャンネル URL を base の
           // scheme (https 等) にリライト → mixed-content 回避
