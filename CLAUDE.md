@@ -27,7 +27,8 @@
 - `app/` — Next.js App Router(単一ページ)。レイアウト・PWA manifest。
 - `components/` — UI コンポーネント。プレイヤー 2 種(`TsLivePlayer` = Mirakurun 生 TS / `HlsPlayer` = EPGStation HLS)、
   `Sidebar` / `TopBar` / `SettingsModal` / `EpgPanel` / `StatsPanel` / `GlobalHotkeys` / `ExternalPlayerButton` 等。
-- `lib/` — ロジック(m3u パース、EPGStation 連携、サブチャンネル判定、外部プレイヤー URL、zustand store)。
+- `lib/` — ロジック(m3u パース、EPGStation 連携、サブチャンネル判定、外部プレイヤー URL、zustand store、
+  チャンネル名の半角化・検索の曖昧マッチ `textNormalize`、ビルド時注入のバージョン情報 `version`)。
   単体テストは同階層の `*.test.ts`(vitest・node 環境。UI テストは `// @vitest-environment jsdom`)。
 - `public/` — 静的アセット。`coi-serviceworker.js`(TS 直モードの SharedArrayBuffer 用)。
 - `scripts/` — 補助スクリプト(`scripts/README.md` 参照)。
@@ -57,4 +58,4 @@
 - [2026-07-04] バックグラウンドの委任エージェント(fast-worker 等)が停止しているのに「稼働中」と誤認して長時間放置し、ユーザーを待たせた → 完了指標(ブランチ push の有無)だけを見て「生存」を確認していなかった。停止と「遅いだけ」を区別できていなかった → **委任中は生存を能動確認する**: transcript(tasks/<agentId>.output)の最終イベント時刻が進んでいるかで判定し、数分間進んでいなければ停止とみなして自分で引き取る。状況報告は「まだ完了していない」ではなく「前進している証拠」を根拠にする。**原因も修正も自分で確定済みの小さな変更は委任せず直接行う**(今回の Safari fetch 修正は自分で 5 分で直せた)。
 - [2026-07-04] iPhone/iPad の Safari で全データ取得が失敗 → `lib/safeFetch.ts` の `buildFetchInit` が Chromium 専用の非標準 fetch オプション `targetAddressSpace` を付与しており、Safari(WebKit)がこれを `TypeError` で拒否していた → ブラウザ非標準の fetch オプションは feature detection(`new Request(url, {opt})` が例外を投げるか)してから付ける。フロントの動作確認は Chrome だけでなく実機 Safari でも行う(safaridriver 経由で WebDriver 操作できる)。
 - [2026-07-04] UI 変更(ヘッダに版表示追加)後、スマホ幅で横溢れの表示崩れを出し、ユーザーから複数回「全サイズで検証してから確定して」と指摘された → 単一ビューポートでしか確認していなかった → **UI を変えたら確定前に必ず全サイズ帯で表示検証する**: PC・タブレット(複数)・iPhone(複数)、**最小 320px を必ず含む**幅マトリクスを `scripts/viewport-check.mjs` で回し、横スクロール発生(scrollW>innerW)とヘッダ要素の重なりを機械判定。**機械判定が全緑でも代表画面(320px・タブレット・PC)は必ず目視**(文字の重なり・切れ・はみ出し)。全緑+目視 OK まで「完了」と言わない。
-- [2026-07-04] 放送(ARIB)由来のチャンネル名は Mirakurun/EPGStation とも**全角**で届く。表示はフロントで半角化する(`lib/textNormalize.ts` の `toHalfWidth` を `parseM3u` で適用。英数記号・全角空白のみ半角化し、カナ・漢字は保持)。検索は `channelMatchesSearch` が全角/半角・英字大小・カタカナ/ひらがなを畳み込み、ローマ字入力もかな変換して照合する(「あに」「ani」で「アニ」に一致)。
+- [2026-07-04] 放送(ARIB)由来のチャンネル名が全角のまま表示されていた(半角化の仕様漏れ。ユーザー指摘で発覚)→ フロントでの半角化を実装していなかった → **表示は半角化して出す**: `lib/textNormalize.ts` の `toHalfWidth` を `parseM3u` で適用(英数記号・全角空白のみ半角化しカナ・漢字は保持。EPGStation の `halfWidthName` に依存せず Mirakurun/EPGStation を同一変換で扱う)。検索は `channelMatchesSearch` が全角/半角・英字大小・カタカナ/ひらがなを畳み込み+ローマ字かな変換で照合(「あに」「ani」で「アニ」に一致)。**全角表示に戻す/この畳み込みを壊す変更を入れない**。
