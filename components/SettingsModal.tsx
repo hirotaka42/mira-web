@@ -9,6 +9,7 @@ import type { ExternalPlayerKind } from "@/lib/externalPlayer";
 import type { M2tsModeInfo } from "@/lib/epgstationConfig";
 import { resolveEpgstationOrigin, fetchM2tsModes } from "@/lib/epgstationConfig";
 import { exportSettings, downloadFile } from "@/lib/settingsFile";
+import type { Channel } from "@/lib/types";
 import { Download } from "lucide-react";
 
 interface Props {
@@ -471,6 +472,17 @@ export default function SettingsModal({ open, onClose }: Props) {
             </button>
             <button
               onClick={() => {
+                const m3u = channelsToM3u(channels);
+                downloadFile("mira-web-playlist.m3u", "audio/x-mpegurl", m3u);
+              }}
+              disabled={channels.length === 0}
+              className="text-xs text-slate-500 hover:text-cyan-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+              title="現在のチャンネル一覧を標準 M3U で書き出します"
+            >
+              <Download size={12} /> プレイリスト (.m3u)
+            </button>
+            <button
+              onClick={() => {
                 const now = new Date();
                 const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
                 const json = exportSettings({
@@ -594,4 +606,16 @@ function TabButton({
       {children}
     </button>
   );
+}
+
+/** channels を標準 M3U 形式に変換する */
+function channelsToM3u(channels: Channel[]): string {
+  const lines = ["#EXTM3U"];
+  for (const ch of channels) {
+    let attrs = `tvg-id="${ch.id}" group-title="${ch.group}"`;
+    if (ch.logo) attrs += ` tvg-logo="${ch.logo}"`;
+    lines.push(`#EXTINF:-1 ${attrs},${ch.name}`);
+    lines.push(ch.url);
+  }
+  return lines.join("\n") + "\n";
 }
