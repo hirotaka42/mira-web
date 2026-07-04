@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildFetchInit, mixedContentWarning, validateUrl } from "./safeFetch";
+import {
+  buildFetchInit,
+  mixedContentWarning,
+  validateUrl,
+  SUPPORTS_TARGET_ADDRESS_SPACE,
+} from "./safeFetch";
 
 describe("validateUrl", () => {
   it("http / https の URL を受け付ける", () => {
@@ -114,22 +119,27 @@ describe("buildFetchInit", () => {
     expect(init.redirect).toBe("follow");
   });
 
-  it("private host には targetAddressSpace=private を付ける", () => {
+  // targetAddressSpace は Chromium 専用。対応ブラウザ(SUPPORTS_TARGET_ADDRESS_SPACE=true)
+  // のときだけ付与し、Safari では付けない。実行環境依存を避けるため期待値を判定値で分岐する。
+  it("private host には対応ブラウザでのみ targetAddressSpace=private を付ける", () => {
     const init = buildFetchInit(new URL("https://foo.ts.net/")) as RequestInit & {
       targetAddressSpace?: string;
     };
-    expect(init.targetAddressSpace).toBe("private");
+    expect(init.targetAddressSpace).toBe(
+      SUPPORTS_TARGET_ADDRESS_SPACE ? "private" : undefined
+    );
   });
 
-  it("localhost / 127.0.0.1 には targetAddressSpace=local を付ける", () => {
+  it("localhost / 127.0.0.1 には対応ブラウザでのみ targetAddressSpace=local を付ける", () => {
+    const expected = SUPPORTS_TARGET_ADDRESS_SPACE ? "local" : undefined;
     const a = buildFetchInit(new URL("http://localhost:3000/")) as RequestInit & {
       targetAddressSpace?: string;
     };
-    expect(a.targetAddressSpace).toBe("local");
+    expect(a.targetAddressSpace).toBe(expected);
     const b = buildFetchInit(new URL("http://127.0.0.1:3000/")) as RequestInit & {
       targetAddressSpace?: string;
     };
-    expect(b.targetAddressSpace).toBe("local");
+    expect(b.targetAddressSpace).toBe(expected);
   });
 
   it("public host には targetAddressSpace を付けない", () => {

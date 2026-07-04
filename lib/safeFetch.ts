@@ -69,6 +69,26 @@ export function mixedContentWarning(url: URL): string | null {
   return null;
 }
 
+/**
+ * fetch の `targetAddressSpace` は Chromium の Private Network Access 用の非標準オプション。
+ * Safari (WebKit) は未知の値として RequestInit を検証し `TypeError` を投げるため、
+ * これを付けると .ts.net など private host への全 fetch が失敗する
+ * (iPhone / iPad の Safari でデータ取得不能になっていた原因)。
+ * 対応ブラウザでのみ付与するよう、一度だけ feature detection してキャッシュする。
+ */
+export const SUPPORTS_TARGET_ADDRESS_SPACE: boolean = (() => {
+  if (typeof Request === "undefined") return false;
+  try {
+    // 非対応ブラウザ (Safari) はここで TypeError を投げる
+    new Request("https://example.ts.net/", {
+      targetAddressSpace: "private",
+    } as RequestInit);
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
 /** 静的ホスティング上から Mirakurun へ直接 fetch するときの共通オプション */
 export function buildFetchInit(
   url: URL,
@@ -85,7 +105,8 @@ export function buildFetchInit(
   };
   // Chrome の Private Network Access — public ページから private host を叩くのに必須。
   // TSPlay と同じヒント。Mirakurun は preflight に応答する。
-  if (looksPrivate(url.hostname)) {
+  // Safari は targetAddressSpace で TypeError を投げるため対応ブラウザのみ付与する。
+  if (looksPrivate(url.hostname) && SUPPORTS_TARGET_ADDRESS_SPACE) {
     if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
       init.targetAddressSpace = "local";
     } else {
