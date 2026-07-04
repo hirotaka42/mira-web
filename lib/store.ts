@@ -74,7 +74,7 @@ async function loadFromSource(
       if (Array.isArray(parsed) && looksLikeEpgstationChannels(parsed)) {
         if (!baseUrl) {
           throw new Error(
-            "EPGStation の channels JSON を検出しましたが、HLS 起動 URL を組み立てる Base URL が必要です。Base URL 欄に EPGStation の URL (例: https://your-epgstation/api/channels) を入れてください。"
+            "EPGStation の channels JSON を検出しましたが、HLS 起動 URL を組み立てる Base URL が必要です。Base URL 欄に EPGStation の URL (例: https://your-epgstation) を入れてください。"
           );
         }
         return {
@@ -153,8 +153,14 @@ export const useStore = create<State>()(
               const { text, baseUrl } = await loadFromSource(innerSrc);
               const channels = parseM3u(text, baseUrl);
               if (channels.length === 0) {
+                let hint = "";
+                const firstLine = text.trimStart().split(/\r?\n/)[0] ?? "";
+                if (firstLine.startsWith("<")) {
+                  hint =
+                    " (取得した内容が HTML のようです。URL がプレイリストではなく Web ページを返している可能性があります)";
+                }
                 throw new Error(
-                  "チャンネルが見つかりませんでした (m3u 形式を確認してください)"
+                  `チャンネルが見つかりませんでした (m3u 形式を確認してください)${hint}`
                 );
               }
               const prev = get().selectedId;
@@ -175,7 +181,15 @@ export const useStore = create<State>()(
           // scheme (https 等) にリライト → mixed-content 回避
           const channels = parseM3u(text, baseUrl);
           if (channels.length === 0) {
-            throw new Error("チャンネルが見つかりませんでした (m3u 形式を確認してください)");
+            let hint = "";
+            const firstLine = text.trimStart().split(/\r?\n/)[0] ?? "";
+            if (firstLine.startsWith("<")) {
+              hint =
+                " (取得した内容が HTML のようです。URL がプレイリストではなく Web ページを返している可能性があります)";
+            }
+            throw new Error(
+              `チャンネルが見つかりませんでした (m3u 形式を確認してください)${hint}`
+            );
           }
           const prev = get().selectedId;
           const stillExists = prev && channels.some((c) => c.id === prev);
