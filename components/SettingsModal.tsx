@@ -11,6 +11,7 @@ import { resolveEpgstationOrigin, fetchM2tsModes } from "@/lib/epgstationConfig"
 import { exportSettings, downloadFile } from "@/lib/settingsFile";
 import type { Channel } from "@/lib/types";
 import { Download } from "lucide-react";
+import { versionLong } from "@/lib/version";
 
 interface Props {
   open: boolean;
@@ -535,6 +536,9 @@ export default function SettingsModal({ open, onClose }: Props) {
                 {loading ? "処理中…" : "テキストを適用"}
               </button>
             )}
+          </div>
+          <div className="w-full text-right text-[10px] text-slate-600 tabular-nums select-text">
+            mira-web {versionLong}
           </div>
         </div>
       </div>

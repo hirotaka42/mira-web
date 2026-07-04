@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { Search, Tv, Satellite, Radio } from "lucide-react";
+import { Search, Tv, Satellite, Radio, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { groupChannels } from "@/lib/m3u";
 import { visibleChannels } from "@/lib/channelNav";
@@ -127,8 +127,25 @@ export default function Sidebar({ mobileSidebarOpen, onCloseMobileSidebar }: Sid
             onChange={(e) => setSearch(e.target.value)}
             placeholder="チャンネル検索…"
             data-search-input
-            className="w-full bg-slate-900 border border-slate-700 rounded-md pl-9 pr-3 py-2 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-cyan-500 transition-colors"
+            className={`w-full bg-slate-900 border border-slate-700 rounded-md pl-9 py-2 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-cyan-500 transition-colors ${
+              search ? "pr-9" : "pr-3"
+            }`}
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                document
+                  .querySelector<HTMLInputElement>("[data-search-input]")
+                  ?.focus();
+              }}
+              aria-label="検索をクリア"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
