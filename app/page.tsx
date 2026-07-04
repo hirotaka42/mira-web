@@ -17,6 +17,7 @@ export default function Page() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stats, setStats] = useState<PlaybackStats>({});
   const [muted, setMuted] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const hydrated = useStore((s) => s._hydrated);
   const hasSource = useStore((s) => !!s.source);
   const channels = useStore((s) => s.channels);
@@ -54,10 +55,16 @@ export default function Page() {
 
   return (
     <div className="h-full flex flex-col">
-      <TopBar onOpenSettings={() => setSettingsOpen(true)} />
+      <TopBar
+        onOpenSettings={() => setSettingsOpen(true)}
+        onToggleMobileSidebar={() => setMobileSidebarOpen((v) => !v)}
+      />
 
       <div className="flex-1 flex min-h-0">
-        <Sidebar />
+        <Sidebar
+          mobileSidebarOpen={mobileSidebarOpen}
+          onCloseMobileSidebar={() => setMobileSidebarOpen(false)}
+        />
 
         <main
           className="flex-1 overflow-y-auto p-4 bg-slate-900"
